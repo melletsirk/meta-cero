@@ -2,13 +2,16 @@
 import { useAuthStore } from '../stores/auth'
 import { useRouter } from 'vue-router'
 import { ref } from 'vue'
+import { useNotificationsStore } from '../stores/notifications'
 
 const authStore = useAuthStore()
 const router = useRouter()
+const notificationsStore = useNotificationsStore()
 const isMobileMenuOpen = ref(false)
 
 const handleLogout = async () => {
   await authStore.signOut()
+  notificationsStore.info('Has cerrado sesión exitosamente')
   router.push('/login')
 }
 </script>

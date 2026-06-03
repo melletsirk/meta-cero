@@ -2,9 +2,11 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDeudasStore } from '../stores/deudas'
+import { useNotificationsStore } from '../stores/notifications'
 
 const router = useRouter()
 const deudasStore = useDeudasStore()
+const notificationsStore = useNotificationsStore()
 
 const formData = ref({
   nombre: '',
@@ -40,10 +42,13 @@ const handleSubmit = async () => {
       calcularTasaMensualDesdeTEA()
     }
     const payload = { ...formData.value }
+    if (payload.fecha_vencimiento === '') payload.fecha_vencimiento = null;
+    if (payload.tea === '') payload.tea = null;
     await deudasStore.addDeuda(payload)
+    notificationsStore.success('Deuda registrada exitosamente')
     router.push('/')
   } catch (error) {
-    alert('Error al guardar la deuda: ' + error.message)
+    notificationsStore.error('Error al guardar la deuda: ' + error.message)
   } finally {
     loading.value = false
   }

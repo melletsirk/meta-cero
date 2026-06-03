@@ -2,39 +2,39 @@
 import { ref } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { useRouter } from 'vue-router'
+import { useNotificationsStore } from '../stores/notifications'
 
 const authStore = useAuthStore()
 const router = useRouter()
+const notificationsStore = useNotificationsStore()
 
 const isRegistering = ref(false)
 const email = ref('')
 const password = ref('')
-const errorMsg = ref('')
-const successMsg = ref('')
 const loading = ref(false)
 
 const handleSubmit = async () => {
-  errorMsg.value = ''
-  successMsg.value = ''
   loading.value = true
   try {
     if (isRegistering.value) {
       const data = await authStore.signUp(email.value, password.value)
       if (data.user && data.user.identities && data.user.identities.length === 0) {
-         errorMsg.value = 'Este correo ya está registrado.'
+         notificationsStore.error('Este correo ya está registrado.')
       } else if (data.session) {
+         notificationsStore.success('Cuenta creada exitosamente')
          router.push('/')
       } else {
-         successMsg.value = '¡Registro exitoso! Revisa tu correo electrónico para confirmar tu cuenta. (Si desactivaste la confirmación en Supabase, simplemente inicia sesión ahora).'
+         notificationsStore.success('¡Registro exitoso! Puedes iniciar sesión ahora.', 6000)
          isRegistering.value = false
          password.value = ''
       }
     } else {
       await authStore.signIn(email.value, password.value)
+      notificationsStore.success('Inicio de sesión exitoso')
       router.push('/')
     }
   } catch (error) {
-    errorMsg.value = error.message || 'Error de autenticación'
+    notificationsStore.error(error.message || 'Error de autenticación')
   } finally {
     loading.value = false
   }
@@ -72,19 +72,7 @@ const handleSubmit = async () => {
           <input id="password" v-model="password" type="password" required class="block w-full border-slate-200 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-base p-3.5 bg-white/70 backdrop-blur-sm transition-all hover:bg-white" placeholder="••••••••" />
         </div>
 
-        <transition name="fade">
-          <div v-if="errorMsg" class="text-red-600 text-sm bg-red-50 p-4 rounded-xl border border-red-100 flex items-start gap-3">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
-            {{ errorMsg }}
-          </div>
-        </transition>
 
-        <transition name="fade">
-          <div v-if="successMsg" class="text-teal-700 text-sm bg-teal-50 p-4 rounded-xl border border-teal-100 flex items-start gap-3">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
-            {{ successMsg }}
-          </div>
-        </transition>
 
         <button type="submit" :disabled="loading" class="w-full flex justify-center items-center gap-2 py-3.5 px-4 border border-transparent rounded-xl shadow-lg shadow-indigo-500/30 text-base font-bold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transform transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed">
           <svg v-if="loading" class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
