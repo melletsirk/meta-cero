@@ -1,70 +1,218 @@
 /**
- * Convierte Tasa Efectiva Anual (TEA) a Tasa Efectiva Mensual (TEM)
- * Fórmula: TEM = ( (1 + TEA)^(1/12) ) - 1
- * @param {number} tea Tasa Efectiva Anual en porcentaje (ej: 15.5 para 15.5%)
- * @returns {number} Tasa Efectiva Mensual en decimal (ej: 0.012 para 1.2%)
+ * ============================================================
+ * finanzas.js — Cálculos financieros para el sistema peruano
+ * ============================================================
  */
-export function calcularTasaMensual(tea) {
-  if (!tea) return 0;
-  const teaDecimal = tea / 100;
-  return Math.pow(1 + teaDecimal, 1 / 12) - 1;
+
+// ---------------------------------------------------------------------------
+// FRECUENCIAS DE PAGO
+// ---------------------------------------------------------------------------
+
+export const FRECUENCIAS = {
+  mensual:    { label: 'Mensual',              dias: 30,  periodosPorAnio: 12   },
+  quincenal:  { label: 'Quincenal (15 días)',   dias: 15,  periodosPorAnio: 24   },
+  catorcenal: { label: 'Catorcenal (14 días)',  dias: 14,  periodosPorAnio: 26.07 },
+  semanal:    { label: 'Semanal (7 días)',       dias: 7,   periodosPorAnio: 52   },
+  cuota_unica:{ label: 'Cuota Única al vencer', dias: null, periodosPorAnio: 1   },
+}
+
+// ---------------------------------------------------------------------------
+// TASAS PERIÓDICAS
+// ---------------------------------------------------------------------------
+
+/**
+ * Calcula la tasa periódica efectiva a partir de la TEA.
+ * Fórmulas según el sistema financiero peruano:
+ *   Mensual    : (1 + TEA)^(1/12)    - 1
+ *   Quincenal  : (1 + TEA)^(15/365)  - 1
+ *   Catorcenal : (1 + TEA)^(14/365)  - 1
+ *   Semanal    : (1 + TEA)^(7/365)   - 1
+ *
+ * @param {number} tea - TEA en porcentaje (ej: 24 para 24%)
+ * @param {string} frecuencia - Clave de FRECUENCIAS
+ * @returns {number} Tasa periódica en decimal
+ */
+export function calcularTasaPeriodica(tea, frecuencia = 'mensual') {
+  if (!tea || tea <= 0) return 0
+  const teaDec = tea / 100
+
+  switch (frecuencia) {
+    case 'mensual':
+      return Math.pow(1 + teaDec, 1 / 12) - 1
+    case 'quincenal':
+      return Math.pow(1 + teaDec, 15 / 365) - 1
+    case 'catorcenal':
+      return Math.pow(1 + teaDec, 14 / 365) - 1
+    case 'semanal':
+      return Math.pow(1 + teaDec, 7 / 365) - 1
+    case 'cuota_unica':
+      return teaDec  // se usa directamente en el cálculo de cuota única
+    default:
+      return Math.pow(1 + teaDec, 1 / 12) - 1
+  }
 }
 
 /**
- * Formatea un número a moneda peruana (S/.)
- * @param {number} monto 
- * @returns {string} Monto formateado
+ * Convierte TEA a Tasa Efectiva Mensual (TEM) — compatibilidad legada.
+ * @param {number} tea - TEA en porcentaje
+ * @returns {number} TEM en decimal
  */
-export function formatearMonedaPeru(monto) {
+export function calcularTasaMensual(tea) {
+  return calcularTasaPeriodica(tea, 'mensual')
+}
+
+// ---------------------------------------------------------------------------
+// ALERTAS DE TEA
+// ---------------------------------------------------------------------------
+
+/**
+ * Devuelve el nivel y mensaje de alerta según la TEA ingresada.
+ * Rangos del sistema financiero peruano (SBS):
+ *   < 8%      → Inusualmente baja
+ *   8%–80%    → Rango normal formal
+ *   80%–300%  → Alta (fintechs / emergencia)
+ *   > 300%    → Muy alta (crédito informal)
+ *
+ * @param {number|null} tea - TEA en porcentaje
+ * @returns {{ level: 'none'|'yellow'|'green'|'orange'|'red', mensaje: string }}
+ */
+export function alertaTEA(tea) {
+  if (tea === null || tea === undefined || tea === '' || isNaN(Number(tea))) {
+    return { level: 'none', mensaje: '' }
+  }
+  const t = Number(tea)
+  if (t < 8) {
+    return {
+      level: 'yellow',
+      mensaje: 'Tasa inusualmente baja, verifica que sea correcta.'
+    }
+  }
+  if (t <= 80) {
+    return {
+      level: 'green',
+      mensaje: 'Tasa dentro del rango normal del sistema financiero formal.'
+    }
+  }
+  if (t <= 300) {
+    return {
+      level: 'orange',
+      mensaje: 'Tasa alta, típica de fintechs o créditos de emergencia. Considera refinanciar si es posible.'
+    }
+  }
+  return {
+    level: 'red',
+    mensaje: 'Tasa muy alta, típica de crédito informal. Prioriza saldar esta deuda cuanto antes.'
+  }
+}
+
+// ---------------------------------------------------------------------------
+// MONEDA
+// ---------------------------------------------------------------------------
+
+/**
+ * Formatea un monto en la moneda indicada.
+ * Formato peruano: S/ 1,250.00 | $ 1,250.00
+ *
+ * @param {number} monto
+ * @param {'PEN'|'USD'} moneda
+ * @returns {string}
+ */
+export function formatearMoneda(monto, moneda = 'PEN') {
+  if (moneda === 'USD') {
+    return new Intl.NumberFormat('es-PE', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(monto || 0)
+  }
+  // PEN — la API de Intl genera "S/ " en es-PE
   return new Intl.NumberFormat('es-PE', {
     style: 'currency',
     currency: 'PEN',
     minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(monto || 0);
+    maximumFractionDigits: 2,
+  }).format(monto || 0)
 }
 
 /**
- * Genera un cronograma de pagos usando el Sistema Francés (Cuota Fija)
- * @param {number} monto Monto original del préstamo
- * @param {number} tea Tasa Efectiva Anual (porcentaje)
- * @param {number} plazo Número de meses / cuotas
- * @param {Date|string} fechaInicio Fecha de desembolso
- * @param {number} seguroDesgravamen Monto fijo de seguro por cuota (opcional)
- * @returns {Array} Array de cuotas con capital, interes, seguro y total
+ * Alias de compatibilidad legada.
  */
-export function generarCronogramaFrances(monto, tea, plazo, fechaInicio, seguroDesgravamen = 0) {
-  const tem = calcularTasaMensual(tea);
-  
-  // Cálculo de cuota base (Capital + Interés)
-  // Fórmula: C = P * [ i(1+i)^n ] / [ (1+i)^n - 1 ]
-  let cuotaBase = 0;
-  if (tem > 0) {
-    const factor = Math.pow(1 + tem, plazo);
-    cuotaBase = monto * ((tem * factor) / (factor - 1));
-  } else {
-    cuotaBase = monto / plazo;
+export function formatearMonedaPeru(monto) {
+  return formatearMoneda(monto, 'PEN')
+}
+
+/**
+ * Devuelve el símbolo de prefijo de moneda.
+ * @param {'PEN'|'USD'} moneda
+ * @returns {string}
+ */
+export function simboloMoneda(moneda = 'PEN') {
+  return moneda === 'USD' ? '$' : 'S/'
+}
+
+// ---------------------------------------------------------------------------
+// CRONOGRAMA FRANCÉS (cuota fija)
+// ---------------------------------------------------------------------------
+
+/**
+ * Genera el cronograma de pagos con Sistema Francés para cualquier frecuencia.
+ * Si el usuario sólo tiene TCEA (sin TEA pura), se puede pasar tcea=true en
+ * opciones para marcar las cuotas como aproximadas.
+ *
+ * @param {number}        monto              Capital inicial
+ * @param {number}        tea                TEA en porcentaje (o TCEA si esAproximado=true)
+ * @param {number}        numCuotas          Número de cuotas
+ * @param {Date|string}   fechaInicio        Fecha de desembolso
+ * @param {string}        frecuencia         Clave de FRECUENCIAS ('mensual', etc.)
+ * @param {number}        seguroDesgravamen  Monto fijo de seguro por cuota (opcional)
+ * @param {boolean}       esAproximado       true si se usa TCEA en lugar de TEA pura
+ * @returns {Array}       Array de cuotas
+ */
+export function generarCronogramaFrances(
+  monto,
+  tea,
+  numCuotas,
+  fechaInicio,
+  frecuencia = 'mensual',
+  seguroDesgravamen = 0,
+  esAproximado = false
+) {
+  // Cuota única: no hay amortización progresiva
+  if (frecuencia === 'cuota_unica') {
+    return generarCuotaUnica(monto, tea, fechaInicio, seguroDesgravamen, esAproximado)
   }
 
-  const cuotas = [];
-  let saldoPendiente = monto;
-  let fechaActual = new Date(fechaInicio);
+  const tasa = calcularTasaPeriodica(tea, frecuencia)
+  const dias = FRECUENCIAS[frecuencia]?.dias ?? 30
 
-  for (let i = 1; i <= plazo; i++) {
-    // Calcular siguiente fecha (sumar 1 mes)
-    fechaActual = new Date(fechaActual.setMonth(fechaActual.getMonth() + 1));
-    
-    let interes = saldoPendiente * tem;
-    let capital = cuotaBase - interes;
-    
-    // Ajuste en la última cuota por redondeos
-    if (i === plazo) {
-      capital = saldoPendiente;
-      cuotaBase = capital + interes;
+  // Cuota base (capital + interés), fórmula francesa
+  let cuotaBase = 0
+  if (tasa > 0) {
+    const factor = Math.pow(1 + tasa, numCuotas)
+    cuotaBase = monto * ((tasa * factor) / (factor - 1))
+  } else {
+    cuotaBase = monto / numCuotas
+  }
+
+  const cuotas = []
+  let saldo = monto
+  let fechaActual = new Date(fechaInicio)
+
+  for (let i = 1; i <= numCuotas; i++) {
+    fechaActual = avanzarFecha(fechaActual, frecuencia, dias)
+
+    let interes = saldo * tasa
+    let capital = cuotaBase - interes
+
+    // Ajuste en última cuota por redondeos acumulados
+    if (i === numCuotas) {
+      capital = saldo
+      cuotaBase = capital + interes
     }
-    
-    saldoPendiente -= capital;
-    if (saldoPendiente < 0.01) saldoPendiente = 0;
+
+    saldo -= capital
+    if (saldo < 0.01) saldo = 0
 
     cuotas.push({
       numero: i,
@@ -73,25 +221,73 @@ export function generarCronogramaFrances(monto, tea, plazo, fechaInicio, seguroD
       interes: Number(interes.toFixed(2)),
       seguro: Number(seguroDesgravamen.toFixed(2)),
       total: Number((cuotaBase + seguroDesgravamen).toFixed(2)),
-      saldo_pendiente: Number(saldoPendiente.toFixed(2)),
+      saldo_pendiente: Number(saldo.toFixed(2)),
       pagada: false,
-      modo: 'calculado'
-    });
+      modo: esAproximado ? 'aproximado' : 'calculado',
+    })
   }
 
-  return cuotas;
+  return cuotas
 }
 
 /**
- * Estrategia Bola de Nieve: Ordena las deudas por menor saldo pendiente
+ * Genera una cuota única al vencimiento.
+ * Interés simple: I = P * TEA * (días / 365)
+ * Total = P + I
+ */
+function generarCuotaUnica(monto, tea, fechaInicio, seguro = 0, esAproximado = false) {
+  const teaDec = (tea || 0) / 100
+  const fechaVenc = new Date(fechaInicio)
+  fechaVenc.setFullYear(fechaVenc.getFullYear() + 1) // 1 año por defecto para cuota única
+
+  const diasPrestamo = Math.round(
+    (fechaVenc - new Date(fechaInicio)) / (1000 * 60 * 60 * 24)
+  )
+  const interes = monto * teaDec * (diasPrestamo / 365)
+  const total = monto + interes + seguro
+
+  return [{
+    numero: 1,
+    fecha: fechaVenc.toISOString().split('T')[0],
+    capital: Number(monto.toFixed(2)),
+    interes: Number(interes.toFixed(2)),
+    seguro: Number(seguro.toFixed(2)),
+    total: Number(total.toFixed(2)),
+    saldo_pendiente: 0,
+    pagada: false,
+    modo: esAproximado ? 'aproximado' : 'calculado',
+  }]
+}
+
+/**
+ * Avanza la fecha según la frecuencia de pago.
+ */
+function avanzarFecha(fecha, frecuencia, dias) {
+  const d = new Date(fecha)
+  switch (frecuencia) {
+    case 'mensual':
+      d.setMonth(d.getMonth() + 1)
+      break
+    default:
+      d.setDate(d.getDate() + dias)
+  }
+  return d
+}
+
+// ---------------------------------------------------------------------------
+// ESTRATEGIAS DE PAGO
+// ---------------------------------------------------------------------------
+
+/**
+ * Estrategia Bola de Nieve: ordena por menor saldo pendiente.
  */
 export function estrategiaBolaDeNieve(deudas) {
-  return [...deudas].sort((a, b) => a.monto_pendiente - b.monto_pendiente);
+  return [...deudas].sort((a, b) => a.monto_pendiente - b.monto_pendiente)
 }
 
 /**
- * Estrategia Avalancha: Ordena las deudas por mayor tasa de interés (TEA)
+ * Estrategia Avalancha: ordena por mayor tasa de interés (TEA o TCEA).
  */
 export function estrategiaAvalancha(deudas) {
-  return [...deudas].sort((a, b) => (b.tea || 0) - (a.tea || 0));
+  return [...deudas].sort((a, b) => (b.tea || b.tcea || 0) - (a.tea || a.tcea || 0))
 }

@@ -107,3 +107,32 @@ USING (
 -- Grant permisos a roles autenticados
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.deudas TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.cuotas TO authenticated;
+
+-- ============================================================
+-- MIGRACIÓN v2: Contexto Sistema Financiero Peruano
+-- Ejecutar en Supabase SQL Editor si la tabla ya existe
+-- ============================================================
+
+-- TCEA (Tasa de Costo Efectivo Anual) — exigida por la SBS
+-- Incluye intereses + seguros + comisiones + todos los cargos
+ALTER TABLE public.deudas
+  ADD COLUMN IF NOT EXISTS tcea NUMERIC(6, 2);
+
+-- Frecuencia de pago (Perú: mensual, quincenal, catorcenal, semanal, cuota única)
+ALTER TABLE public.deudas
+  ADD COLUMN IF NOT EXISTS frecuencia_pago TEXT
+    CHECK (frecuencia_pago IN ('mensual', 'quincenal', 'catorcenal', 'semanal', 'cuota_unica'))
+    DEFAULT 'mensual';
+
+-- Moneda por deuda (PEN = Soles, USD = Dólares — hipotecas/empresas)
+ALTER TABLE public.deudas
+  ADD COLUMN IF NOT EXISTS moneda TEXT
+    CHECK (moneda IN ('PEN', 'USD'))
+    DEFAULT 'PEN';
+
+-- Actualizar cronograma: marcar cuotas aproximadas (calculadas con TCEA en vez de TEA)
+ALTER TABLE public.cuotas
+  DROP CONSTRAINT IF EXISTS cuotas_modo_check;
+ALTER TABLE public.cuotas
+  ADD CONSTRAINT cuotas_modo_check
+    CHECK (modo IN ('manual', 'calculado', 'aproximado'));
