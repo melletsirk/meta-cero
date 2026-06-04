@@ -130,6 +130,17 @@ ALTER TABLE public.deudas
     CHECK (moneda IN ('PEN', 'USD'))
     DEFAULT 'PEN';
 
+-- ============================================================
+-- MIGRACIÓN v3: Fecha del Primer Pago (reemplaza dia_vencimiento)
+-- ============================================================
+
+-- Fecha exacta del primer pago / vencimiento recurrente
+ALTER TABLE public.deudas
+  ADD COLUMN IF NOT EXISTS fecha_primer_pago DATE;
+
+-- NOTA: dia_vencimiento INTEGER se mantiene por compatibilidad con datos existentes.
+-- Para nuevos registros usar fecha_primer_pago.
+
 -- Actualizar cronograma: marcar cuotas aproximadas (calculadas con TCEA en vez de TEA)
 ALTER TABLE public.cuotas
   DROP CONSTRAINT IF EXISTS cuotas_modo_check;
