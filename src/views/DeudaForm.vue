@@ -3,7 +3,8 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDeudasStore } from '../stores/deudas'
 import { useNotificationsStore } from '../stores/notifications'
-import { calcularTasaPeriodica, alertaTEA, simboloMoneda, FRECUENCIAS } from '../lib/finanzas'
+import { calcularTasaPeriodica, alertaTEA, simboloMoneda, FRECUENCIAS, generarCronogramaFrances } from '../lib/finanzas'
+import CronogramaTable from '../components/CronogramaTable.vue'
 
 const router = useRouter()
 const deudasStore = useDeudasStore()
@@ -62,9 +63,9 @@ const formData = ref({
   tasa_mensual: 0,
   frecuencia_pago: 'mensual',
   fecha_inicio: '',
+  fecha_primer_pago: '',
   fecha_vencimiento: '',
   num_cuotas: null,
-  dia_vencimiento: 1,
   tiene_seguro: false,
   monto_seguro: 0,
   otros_cargos: 0,
@@ -116,6 +117,29 @@ const tasaPeriodicaDisplay = computed(() => {
 const esCuotaUnica = computed(() => formData.value.frecuencia_pago === 'cuota_unica')
 
 // ---------------------------------------------------------------------------
+// Preview del cronograma en tiempo real
+// ---------------------------------------------------------------------------
+const cronogramaPreview = computed(() => {
+  const { monto_original, tea, tcea, num_cuotas, fecha_inicio, frecuencia_pago, tiene_seguro, monto_seguro } = formData.value
+  const tasaUsada = tea || tcea
+  if (!monto_original || !tasaUsada || (!num_cuotas && frecuencia_pago !== 'cuota_unica') || !fecha_inicio) return []
+  try {
+    const seguro = tiene_seguro ? (Number(monto_seguro) || 0) : 0
+    return generarCronogramaFrances(
+      Number(monto_original),
+      Number(tasaUsada),
+      Number(num_cuotas) || 1,
+      fecha_inicio,
+      frecuencia_pago,
+      seguro,
+      !tea && !!tcea
+    )
+  } catch { return [] }
+})
+
+const previewListo = computed(() => cronogramaPreview.value.length > 0)
+
+// ---------------------------------------------------------------------------
 // Cálculo automático de tasa mensual al cambiar TEA
 // ---------------------------------------------------------------------------
 const calcularTasaMensualDesdeTEA = () => {
@@ -139,7 +163,7 @@ const handleSubmit = async () => {
     if (payload.fecha_vencimiento === '') payload.fecha_vencimiento = null
     if (payload.tea === '') payload.tea = null
     if (payload.tcea === '') payload.tcea = null
-    await deudasStore.addDeuda(payload)
+    await deudasStore.addDeuda(payload, cronogramaPreview.value)
     notificationsStore.success('Deuda registrada exitosamente')
     router.push('/')
   } catch (error) {
@@ -335,12 +359,12 @@ const handleSubmit = async () => {
             </div>
           </transition>
 
-          <!-- Día de Vencimiento -->
+          <!-- Fecha del Primer Pago -->
           <div v-if="!esCuotaUnica" class="group">
             <label class="block text-sm font-semibold text-slate-700 mb-1.5 group-focus-within:text-indigo-600 transition-colors">
-              {{ formData.frecuencia_pago === 'mensual' ? 'Día de Vencimiento Mensual' : 'Día del Primer Pago' }}
+              Fecha del Primer Pago
             </label>
-            <input id="deuda-dia-vencimiento" v-model.number="formData.dia_vencimiento" type="number" min="1" max="31" required
+            <input id="deuda-fecha-primer-pago" v-model="formData.fecha_primer_pago" type="date" required
               class="w-full border border-slate-200 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 p-3 bg-white/70 backdrop-blur-sm transition-all hover:bg-white" />
           </div>
         </div>
@@ -499,6 +523,33 @@ const handleSubmit = async () => {
         <textarea id="deuda-notas" v-model="formData.notas" rows="3"
           class="w-full border border-slate-200 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 p-3 bg-white/70 backdrop-blur-sm transition-all hover:bg-white resize-none"
           placeholder="Opcional..."></textarea>
+      </div>
+
+      <hr class="border-slate-100" />
+
+      <!-- ── Vista Previa Cronograma ── -->
+      <div class="relative z-10">
+        <div class="mb-4">
+          <h3 class="text-lg font-bold text-slate-900">Vista Previa del Cronograma</h3>
+          <p class="text-xs text-slate-400 mt-0.5">Coteja con tu contrato antes de guardar.</p>
+        </div>
+
+        <!-- Aviso cuando no hay datos suficientes -->
+        <div v-if="!previewListo" class="flex items-center gap-3 p-4 bg-slate-50 border border-dashed border-slate-200 rounded-2xl text-sm text-slate-400">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Completa monto, tasa, nro. cuotas y fecha de inicio para ver la proyección.
+        </div>
+
+        <!-- Tabla siempre visible cuando hay datos -->
+        <div v-if="previewListo">
+          <CronogramaTable
+            :cuotas="cronogramaPreview"
+            :moneda="formData.moneda"
+            :es-aproximado="soloCon_TCEA"
+          />
+        </div>
       </div>
 
       <!-- ── Botones ── -->
