@@ -4,6 +4,7 @@ import { useAuthStore } from '../stores/auth'
 import Dashboard from '../views/Dashboard.vue'
 import Login from '../views/Login.vue'
 import DeudaForm from '../views/DeudaForm.vue'
+import DeudaDetalle from '../views/DeudaDetalle.vue'
 
 const routes = [
   {
@@ -24,7 +25,12 @@ const routes = [
     component: DeudaForm,
     meta: { requiresAuth: true }
   },
-  // Add other routes here as they are created
+  {
+    path: '/deudas/:id',
+    name: 'DeudaDetalle',
+    component: DeudaDetalle,
+    meta: { requiresAuth: true }
+  },
 ]
 
 const router = createRouter({
