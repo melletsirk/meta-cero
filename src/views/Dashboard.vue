@@ -19,6 +19,10 @@ const goNuevaDeuda = () => {
   router.push('/deudas/nueva')
 }
 
+const goDetalle = (id) => {
+  router.push(`/deudas/${id}`)
+}
+
 const handleEliminar = async (id) => {
   if (confirm('¿Estás seguro de que deseas eliminar esta deuda? Esta acción no se puede deshacer.')) {
     try {
@@ -166,6 +170,7 @@ const formatMonto = (monto, moneda) => formatearMoneda(monto, moneda || 'PEN')
       <div v-else class="space-y-4">
         <!-- Deuda Items -->
         <div v-for="(deuda, index) in deudasStore.deudas" :key="deuda.id"
+             @click="goDetalle(deuda.id)"
              class="group flex flex-col sm:flex-row justify-between items-start sm:items-center p-5 bg-white/60 border border-slate-100 rounded-2xl hover:bg-white hover:shadow-md transition-all cursor-pointer animate-slide-up"
              :style="{ animationDelay: `${index * 100}ms` }">
 
