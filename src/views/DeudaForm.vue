@@ -591,55 +591,7 @@ const handleSubmit = async () => {
           </div>
         </transition>
 
-        <!-- Base de cálculo: 360 vs 365 días -->
-        <div class="mt-4 p-4 bg-slate-50 border border-slate-200 rounded-2xl">
-          <p class="text-sm font-bold text-slate-700 mb-3">⚙️ Configuración del Cronograma</p>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <!-- Base de días -->
-            <div>
-              <label class="block text-xs font-semibold text-slate-600 mb-2">
-                Base de cálculo
-                <span class="ml-1 text-slate-400 font-normal">(días por año)</span>
-              </label>
-              <div class="flex gap-2">
-                <label class="flex-1 cursor-pointer">
-                  <input type="radio" v-model.number="formData.base_calculo" :value="365" class="sr-only peer" />
-                  <div
-                    class="text-center p-2.5 rounded-xl border-2 border-slate-200 bg-white text-slate-600 font-bold text-sm transition-all peer-checked:border-indigo-500 peer-checked:bg-indigo-50 peer-checked:text-indigo-700 hover:border-slate-300">
-                    365 días
-                    <span class="block text-xs font-normal text-slate-400 peer-checked:text-indigo-500">Bancos /
-                      SBS</span>
-                  </div>
-                </label>
-                <label class="flex-1 cursor-pointer">
-                  <input type="radio" v-model.number="formData.base_calculo" :value="360" class="sr-only peer" />
-                  <div
-                    class="text-center p-2.5 rounded-xl border-2 border-slate-200 bg-white text-slate-600 font-bold text-sm transition-all peer-checked:border-indigo-500 peer-checked:bg-indigo-50 peer-checked:text-indigo-700 hover:border-slate-300">
-                    360 días
-                    <span class="block text-xs font-normal text-slate-400">Cooperativas / Cajas</span>
-                  </div>
-                </label>
-              </div>
-            </div>
 
-            <!-- Redondeo de cuota -->
-            <div class="flex flex-col justify-center">
-              <label class="block text-xs font-semibold text-slate-600 mb-2">Redondeo de cuota</label>
-              <label class="flex items-center gap-4 text-lg cursor-pointer group">
-                <div class="relative flex items-center justify-center">
-                  <input v-model="formData.redondear_cuota" type="checkbox" class="peer sr-only" />
-                  <div
-                    class="w-11 h-6 bg-slate-200 peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 transition-colors">
-                  </div>
-                </div>
-                <span class="text-sm text-slate-600 font-medium">
-                  Redondear al sol entero
-                  <span class="block text-sm text-slate-500 font-normal">Ej: S/ 145.30 → S/ 146.00</span>
-                </span>
-              </label>
-            </div>
-          </div>
-        </div>
 
         <!-- Tasa periódica calculada (readonly) -->
         <transition name="fade">
