@@ -100,22 +100,12 @@ const cuotasDelMes = computed(() => {
       const f = new Date(c.fecha + 'T12:00:00')
       return f.getFullYear() === anioActual.value && f.getMonth() === mesActual.value
     })
-    .sort((a, b) => new Date(a.fecha) - new Date(b.fecha))
+    .sort((a, b) => {
+      if (a.pagada !== b.pagada) return a.pagada ? 1 : -1
+      return new Date(a.fecha) - new Date(b.fecha)
+    })
 })
 
-// ── Agrupadas por día ───────────────────────────────
-const cuotasPorDia = computed(() => {
-  const grupos = {}
-  cuotasDelMes.value.forEach(c => {
-    const dia = new Date(c.fecha + 'T12:00:00').getDate()
-    if (!grupos[dia]) grupos[dia] = []
-    grupos[dia].push(c)
-  })
-  // Ordenar días
-  return Object.entries(grupos)
-    .sort(([a], [b]) => Number(a) - Number(b))
-    .map(([dia, cuotas]) => ({ dia: Number(dia), cuotas }))
-})
 
 // ── Totales del mes ─────────────────────────────────
 const totalMesPEN = computed(() =>
@@ -251,104 +241,71 @@ function esPasado(fechaStr) {
       <p class="text-slate-400 text-sm">No hay pagos registrados para {{ MESES[mesActual] }} {{ anioActual }}</p>
     </div>
 
-    <!-- ── Lista agrupada por día ── -->
-    <div v-else class="space-y-4">
-      <div v-for="grupo in cuotasPorDia" :key="grupo.dia"
-        class="glass rounded-2xl border shadow-sm overflow-hidden"
-        :class="esHoy(grupo.dia) ? 'border-indigo-300 ring-2 ring-indigo-200' : 'border-white/60'">
-
-        <!-- Encabezado del día -->
-        <div class="px-5 py-3 flex items-center justify-between"
-          :class="esHoy(grupo.dia) ? 'bg-indigo-600' : 'bg-white/40 border-b border-white/40'">
-          <div class="flex items-center gap-3">
-            <div class="text-center min-w-[2.5rem]"
-              :class="esHoy(grupo.dia) ? 'text-white' : 'text-slate-700'">
-              <span class="block text-2xl font-black leading-none">{{ grupo.dia }}</span>
-              <span class="text-xs font-semibold uppercase tracking-wide">
-                {{ new Date(anioActual, mesActual, grupo.dia).toLocaleDateString('es-PE', { weekday: 'short' }) }}
+    <!-- ── Tabla de cuotas ── -->
+    <div v-else class="overflow-x-auto bg-white rounded-2xl shadow-sm border border-slate-200">
+      <table class="min-w-full text-sm">
+        <thead class="bg-indigo-50 border-b-2 border-indigo-100">
+          <tr class="text-indigo-900">
+            <th class="px-4 py-4 text-left text-sm font-extrabold uppercase tracking-wider rounded-tl-2xl">Fecha de Pago</th>
+            <th class="px-4 py-4 text-left text-sm font-extrabold uppercase tracking-wider">Préstamo</th>
+            <th class="px-4 py-4 text-center text-sm font-extrabold uppercase tracking-wider">N° Cuota</th>
+            <th class="px-4 py-4 text-right text-sm font-extrabold uppercase tracking-wider">Monto de Cuota</th>
+            <th class="px-4 py-4 text-center text-sm font-extrabold uppercase tracking-wider rounded-tr-2xl">Pago</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          <tr v-for="cuota in cuotasDelMes" :key="cuota.id" 
+            class="transition-colors hover:bg-slate-50"
+            :class="{ 'opacity-60 bg-slate-50': cuota.pagada, 'bg-red-50/50': !cuota.pagada && esPasado(cuota.fecha) }">
+            
+            <td class="px-4 py-4 whitespace-nowrap">
+              <span class="font-bold text-base" :class="esHoy(new Date(cuota.fecha + 'T12:00:00').getDate()) ? 'text-indigo-600' : 'text-slate-700'">
+                {{ formatFecha(cuota.fecha) }}
               </span>
-            </div>
-            <div v-if="esHoy(grupo.dia)"
-              class="px-2 py-0.5 bg-white/20 rounded-full text-white text-xs font-bold">
-              Hoy
-            </div>
-          </div>
-          <div class="flex items-center gap-2">
-            <span class="text-xs font-semibold px-2 py-1 rounded-full"
-              :class="esHoy(grupo.dia) ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'">
-              {{ grupo.cuotas.length }} cuota{{ grupo.cuotas.length > 1 ? 's' : '' }}
-            </span>
-            <span class="text-sm font-bold"
-              :class="esHoy(grupo.dia) ? 'text-white' : 'text-slate-700'">
-              {{ formatMonto(grupo.cuotas.reduce((s, c) => s + Number(c.total), 0), grupo.cuotas[0]?.deuda?.moneda) }}
-            </span>
-          </div>
-        </div>
+              <span v-if="esHoy(new Date(cuota.fecha + 'T12:00:00').getDate())" class="ml-2 px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs font-bold rounded-full">Hoy</span>
+              <span v-else-if="!cuota.pagada && esPasado(cuota.fecha)" class="ml-2 px-2 py-0.5 bg-red-100 text-red-700 text-xs font-bold rounded-full">Vencida</span>
+            </td>
 
-        <!-- Cuotas del día -->
-        <div class="divide-y divide-slate-100/80">
-          <div v-for="cuota in grupo.cuotas" :key="cuota.id"
-            class="flex items-center gap-4 px-5 py-4 transition-all hover:bg-white/60 group"
-            :class="{ 'opacity-60': cuota.pagada }">
-
-            <!-- Dot de color de deuda -->
-            <div class="shrink-0 w-3 h-3 rounded-full"
-              :class="colorPorDeuda[cuota.deuda?.id]?.dot || 'bg-slate-400'">
-            </div>
-
-            <!-- Info de la cuota -->
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2 flex-wrap">
-                <span class="font-bold text-slate-800 text-sm truncate">
-                  {{ cuota.deuda?.nombre || 'Sin nombre' }}
-                </span>
-                <span class="text-xs px-1.5 py-0.5 rounded-full font-semibold"
-                  :class="colorPorDeuda[cuota.deuda?.id]?.badge || 'bg-slate-100 text-slate-600'">
-                  {{ cuota.deuda?.entidad }}
-                </span>
-                <span class="text-xs text-slate-400 font-medium">Cuota #{{ cuota.numero }}</span>
+            <td class="px-4 py-4">
+              <div class="flex items-center gap-2">
+                <div class="shrink-0 w-3 h-3 rounded-full" :class="colorPorDeuda[cuota.deuda?.id]?.dot || 'bg-slate-400'"></div>
+                <div>
+                  <p class="font-bold text-slate-800 text-base">{{ cuota.deuda?.nombre || 'Sin nombre' }}</p>
+                  <p class="text-sm text-slate-500 font-medium">{{ cuota.deuda?.entidad }}</p>
+                </div>
               </div>
-              <div class="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs text-slate-500">
-                <span v-if="cuota.capital > 0">Capital: <b class="text-slate-700">{{ formatMonto(cuota.capital, cuota.deuda?.moneda) }}</b></span>
-                <span v-if="cuota.interes > 0">Interés: <b class="text-slate-700">{{ formatMonto(cuota.interes, cuota.deuda?.moneda) }}</b></span>
-                <span v-if="cuota.seguro > 0">Seguro: <b class="text-slate-700">{{ formatMonto(cuota.seguro, cuota.deuda?.moneda) }}</b></span>
-              </div>
-            </div>
+            </td>
 
-            <!-- Monto total -->
-            <div class="shrink-0 text-right">
-              <p class="font-extrabold text-slate-900 text-base"
-                :class="{ 'line-through text-slate-400': cuota.pagada }">
-                {{ formatMonto(cuota.total, cuota.deuda?.moneda) }}
-              </p>
-              <p v-if="!cuota.pagada && esPasado(cuota.fecha)" class="text-xs text-red-500 font-semibold mt-0.5">
-                Vencida
-              </p>
-              <p v-else-if="cuota.pagada" class="text-xs text-emerald-600 font-semibold mt-0.5">
-                Pagada ✓
-              </p>
-            </div>
+            <td class="px-4 py-4 text-center font-bold text-slate-600 text-base">
+              {{ cuota.numero }}
+            </td>
 
-            <!-- Toggle pago -->
-            <button
-              @click="togglePagada(cuota)"
-              :disabled="toggling[cuota.id]"
-              class="shrink-0 w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all"
-              :class="cuota.pagada
-                ? 'bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-200'
-                : 'border-slate-200 text-transparent hover:border-emerald-400 hover:text-emerald-400'"
-              :title="cuota.pagada ? 'Marcar como pendiente' : 'Marcar como pagada'">
-              <svg v-if="!toggling[cuota.id]" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
-              </svg>
-              <svg v-else class="animate-spin h-4 w-4 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
+            <td class="px-4 py-4 text-right font-extrabold text-slate-900 text-base" :class="{ 'line-through text-slate-400': cuota.pagada }">
+              {{ formatMonto(cuota.total, cuota.deuda?.moneda) }}
+            </td>
+
+            <td class="px-4 py-4 text-center">
+              <button
+                @click="togglePagada(cuota)"
+                :disabled="toggling[cuota.id]"
+                class="w-8 h-8 mx-auto rounded-full border-2 flex items-center justify-center transition-all"
+                :class="cuota.pagada
+                  ? 'bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-200'
+                  : 'border-slate-300 text-transparent hover:border-emerald-400 hover:text-emerald-400'"
+                :title="cuota.pagada ? 'Marcar como pendiente' : 'Marcar como pagada'">
+                <svg v-if="!toggling[cuota.id]" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                </svg>
+                <svg v-else class="animate-spin h-4 w-4 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                </svg>
+              </button>
+            </td>
+
+          </tr>
+        </tbody>
+      </table>
     </div>
 
     <!-- ── Leyenda de deudas ── -->
