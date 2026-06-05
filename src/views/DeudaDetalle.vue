@@ -165,6 +165,11 @@ const handleEliminar = async () => {
                   :class="teaBadgeClass">
                   {{ deuda.tea ? `TEA ${deuda.tea}%` : `TCEA ${deuda.tcea}%` }}
                 </span>
+                <!-- Moratoria badge -->
+                <span v-if="deuda.tasa_moratoria"
+                  class="text-xs font-bold px-2 py-0.5 rounded-full border bg-red-50 text-red-700 border-red-200" title="Tasa Moratoria">
+                  Mora {{ deuda.tasa_moratoria }}%
+                </span>
               </div>
             </div>
           </div>

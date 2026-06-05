@@ -5,6 +5,7 @@ import Dashboard from '../views/Dashboard.vue'
 import Login from '../views/Login.vue'
 import DeudaForm from '../views/DeudaForm.vue'
 import DeudaDetalle from '../views/DeudaDetalle.vue'
+import CalendarioMensual from '../views/CalendarioMensual.vue'
 
 const routes = [
   {
@@ -29,6 +30,12 @@ const routes = [
     path: '/deudas/:id',
     name: 'DeudaDetalle',
     component: DeudaDetalle,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/calendario',
+    name: 'CalendarioMensual',
+    component: CalendarioMensual,
     meta: { requiresAuth: true }
   },
 ]

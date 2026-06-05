@@ -43,13 +43,10 @@ const progreso = computed(() => {
 const totales = computed(() =>
   props.cuotas.reduce(
     (acc, c) => {
-      acc.capital += Number(c.capital) || 0
-      acc.interes += Number(c.interes) || 0
-      acc.seguro  += Number(c.seguro)  || 0
-      acc.total   += Number(c.total)   || 0
+      acc.total += Number(c.total) || 0
       return acc
     },
-    { capital: 0, interes: 0, seguro: 0, total: 0 }
+    { total: 0 }
   )
 )
 
@@ -145,23 +142,20 @@ const handleToggle = (cuota, idx) => {
       <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto mb-2 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
       </svg>
-      Completa los datos del préstamo para ver el cronograma proyectado.
+      No hay cuotas programadas.
     </div>
 
     <!-- ── Tabla (desktop) ── -->
     <div v-else class="overflow-hidden rounded-2xl border border-slate-200 shadow-sm">
       <div class="hidden sm:block overflow-x-auto">
         <table class="min-w-full text-sm">
-          <thead>
-            <tr class="bg-gradient-to-r from-slate-800 to-slate-700 text-white">
-              <th class="px-3 py-3 text-left text-xs font-bold uppercase tracking-wider rounded-tl-2xl w-14">N°</th>
-              <th class="px-3 py-3 text-left text-xs font-bold uppercase tracking-wider">Fecha</th>
-              <th class="px-3 py-3 text-right text-xs font-bold uppercase tracking-wider">Cuota</th>
-              <th class="px-3 py-3 text-right text-xs font-bold uppercase tracking-wider">Capital</th>
-              <th class="px-3 py-3 text-right text-xs font-bold uppercase tracking-wider">Interés</th>
-              <th class="px-3 py-3 text-right text-xs font-bold uppercase tracking-wider">Seguro</th>
-              <th class="px-3 py-3 text-right text-xs font-bold uppercase tracking-wider">Saldo</th>
-              <th class="px-3 py-3 text-center text-xs font-bold uppercase tracking-wider rounded-tr-2xl w-32">Pago</th>
+          <thead class="bg-indigo-50 border-b-2 border-indigo-100">
+            <tr class="text-indigo-900">
+              <th class="px-3 py-3 text-left text-sm font-extrabold uppercase tracking-wider rounded-tl-2xl w-14">N°</th>
+              <th class="px-3 py-3 text-left text-sm font-extrabold uppercase tracking-wider">Fecha de Vencimiento</th>
+              <th class="px-3 py-3 text-right text-sm font-extrabold uppercase tracking-wider">Monto de Cuota</th>
+              <th class="px-3 py-3 text-right text-sm font-extrabold uppercase tracking-wider" :class="readonly ? 'rounded-tr-2xl' : ''">Saldo</th>
+              <th v-if="!readonly" class="px-3 py-3 text-center text-sm font-extrabold uppercase tracking-wider rounded-tr-2xl w-32">Pago</th>
             </tr>
           </thead>
           <tbody>
@@ -211,9 +205,6 @@ const handleToggle = (cuota, idx) => {
               </td>
               <!-- Cifras -->
               <td class="px-3 py-3 text-right font-bold text-slate-900 tabular-nums text-xs whitespace-nowrap">{{ fmt(cuota.total) }}</td>
-              <td class="px-3 py-3 text-right text-slate-600 tabular-nums text-xs whitespace-nowrap">{{ fmt(cuota.capital) }}</td>
-              <td class="px-3 py-3 text-right text-rose-600 tabular-nums text-xs whitespace-nowrap">{{ fmt(cuota.interes) }}</td>
-              <td class="px-3 py-3 text-right text-slate-500 tabular-nums text-xs whitespace-nowrap">{{ fmt(cuota.seguro) }}</td>
               <td class="px-3 py-3 text-right tabular-nums text-xs whitespace-nowrap font-semibold"
                 :class="cuota.saldo_pendiente === 0 ? 'text-emerald-600' : 'text-slate-600'">
                 {{ fmt(cuota.saldo_pendiente) }}
@@ -272,10 +263,7 @@ const handleToggle = (cuota, idx) => {
                 Totales <span class="font-normal opacity-70">{{ prefijo }}</span>
               </td>
               <td class="px-3 py-3 text-right font-extrabold text-xs tabular-nums">{{ fmt(totales.total) }}</td>
-              <td class="px-3 py-3 text-right font-bold text-xs tabular-nums opacity-90">{{ fmt(totales.capital) }}</td>
-              <td class="px-3 py-3 text-right font-bold text-xs tabular-nums text-rose-300">{{ fmt(totales.interes) }}</td>
-              <td class="px-3 py-3 text-right font-bold text-xs tabular-nums opacity-80">{{ fmt(totales.seguro) }}</td>
-              <td colspan="2" class="rounded-br-2xl"></td>
+              <td :colspan="readonly ? 1 : 2" class="rounded-br-2xl"></td>
             </tr>
           </tfoot>
         </table>
@@ -344,22 +332,17 @@ const handleToggle = (cuota, idx) => {
             </div>
           </div>
           <!-- Cifras -->
-          <div class="mt-3 grid grid-cols-4 gap-1.5 text-xs">
+          <div class="mt-3 grid grid-cols-2 gap-1.5 text-sm">
             <div>
-              <p class="text-slate-400 font-semibold">Cuota</p>
+              <p class="text-slate-400 font-bold uppercase text-xs">Monto de Cuota</p>
               <p class="font-mono font-extrabold text-slate-900">{{ fmt(cuota.total) }}</p>
             </div>
-            <div>
-              <p class="text-slate-400 font-semibold">Capital</p>
-              <p class="font-mono text-slate-700">{{ fmt(cuota.capital) }}</p>
-            </div>
-            <div>
-              <p class="text-slate-400 font-semibold">Interés</p>
-              <p class="font-mono text-rose-600">{{ fmt(cuota.interes) }}</p>
-            </div>
-            <div>
-              <p class="text-slate-400 font-semibold">Saldo</p>
-              <p class="font-mono text-slate-600">{{ fmt(cuota.saldo_pendiente) }}</p>
+            <div class="text-right">
+              <p class="text-slate-400 font-bold uppercase text-xs">Saldo Pendiente</p>
+              <p class="font-mono font-bold"
+                :class="cuota.saldo_pendiente === 0 ? 'text-emerald-600' : 'text-slate-600'">
+                {{ fmt(cuota.saldo_pendiente) }}
+              </p>
             </div>
           </div>
         </div>

@@ -32,19 +32,20 @@ export const FRECUENCIAS = {
  * @param {string} frecuencia - Clave de FRECUENCIAS
  * @returns {number} Tasa periódica en decimal
  */
-export function calcularTasaPeriodica(tea, frecuencia = 'mensual') {
+export function calcularTasaPeriodica(tea, frecuencia = 'mensual', base = 365) {
   if (!tea || tea <= 0) return 0
   const teaDec = tea / 100
 
   switch (frecuencia) {
     case 'mensual':
+      // Para mensual la base no cambia la fórmula (1/12 de año)
       return Math.pow(1 + teaDec, 1 / 12) - 1
     case 'quincenal':
-      return Math.pow(1 + teaDec, 15 / 365) - 1
+      return Math.pow(1 + teaDec, 15 / base) - 1
     case 'catorcenal':
-      return Math.pow(1 + teaDec, 14 / 365) - 1
+      return Math.pow(1 + teaDec, 14 / base) - 1
     case 'semanal':
-      return Math.pow(1 + teaDec, 7 / 365) - 1
+      return Math.pow(1 + teaDec, 7 / base) - 1
     case 'cuota_unica':
       return teaDec  // se usa directamente en el cálculo de cuota única
     default:
@@ -165,7 +166,7 @@ export function simboloMoneda(moneda = 'PEN') {
  * @param {number}        numCuotas          Número de cuotas
  * @param {Date|string}   fechaInicio        Fecha de desembolso
  * @param {string}        frecuencia         Clave de FRECUENCIAS ('mensual', etc.)
- * @param {number}        seguroDesgravamen  Monto fijo de seguro por cuota (opcional)
+ * @param {number}        tasaSeguroDesgravamen Porcentaje de seguro por cuota (opcional)
  * @param {boolean}       esAproximado       true si se usa TCEA en lugar de TEA pura
  * @returns {Array}       Array de cuotas
  */
@@ -176,23 +177,37 @@ export function generarCronogramaFrances(
   fechaInicio,
   frecuencia = 'mensual',
   seguroDesgravamen = 0,
-  esAproximado = false
+  esAproximado = false,
+  base = 365,
+  redondearCuota = false
 ) {
   // Cuota única: no hay amortización progresiva
   if (frecuencia === 'cuota_unica') {
     return generarCuotaUnica(monto, tea, fechaInicio, seguroDesgravamen, esAproximado)
   }
 
-  const tasa = calcularTasaPeriodica(tea, frecuencia)
+  const tasaInteres = calcularTasaPeriodica(tea, frecuencia, base)
   const dias = FRECUENCIAS[frecuencia]?.dias ?? 30
+  
+  // El seguro se ingresa como % mensual, lo prorrateamos a los días del periodo
+  const tasaSeguroMensual = (seguroDesgravamen || 0) / 100
+  const tasaSeguro = tasaSeguroMensual * (dias / 30)
+  
+  const tasaTotal = tasaInteres + tasaSeguro
 
-  // Cuota base (capital + interés), fórmula francesa
+  // Cuota base (capital + interés + seguro), fórmula francesa
   let cuotaBase = 0
-  if (tasa > 0) {
-    const factor = Math.pow(1 + tasa, numCuotas)
-    cuotaBase = monto * ((tasa * factor) / (factor - 1))
+  if (tasaTotal > 0) {
+    const factor = Math.pow(1 + tasaTotal, numCuotas)
+    cuotaBase = monto * ((tasaTotal * factor) / (factor - 1))
   } else {
     cuotaBase = monto / numCuotas
+  }
+
+  // Algunas cooperativas/cajas redondean la cuota al entero superior
+  // y ajustan la última cuota automáticamente
+  if (redondearCuota) {
+    cuotaBase = Math.ceil(cuotaBase)
   }
 
   const cuotas = []
@@ -202,26 +217,34 @@ export function generarCronogramaFrances(
   for (let i = 1; i <= numCuotas; i++) {
     fechaActual = avanzarFecha(fechaActual, frecuencia, dias)
 
-    let interes = saldo * tasa
-    let capital = cuotaBase - interes
+    // Truncar interés a 2 decimales (como hacen las cooperativas)
+    const interesExacto = saldo * tasaInteres
+    const seguroExacto = saldo * tasaSeguro
+    const interes = redondearCuota
+      ? Math.floor(interesExacto * 100) / 100
+      : Number(interesExacto.toFixed(2))
+    const seguro = Number(seguroExacto.toFixed(2))
+
+    let cuotaPeriodo = cuotaBase
+    let capital = cuotaPeriodo - interes - seguro
 
     // Ajuste en última cuota por redondeos acumulados
     if (i === numCuotas) {
       capital = saldo
-      cuotaBase = capital + interes
+      cuotaPeriodo = capital + interes + seguro
     }
 
     saldo -= capital
-    if (saldo < 0.01) saldo = 0
+    if (saldo < 0.005) saldo = 0
 
     cuotas.push({
       numero: i,
       fecha: fechaActual.toISOString().split('T')[0],
       capital: Number(capital.toFixed(2)),
       interes: Number(interes.toFixed(2)),
-      seguro: Number(seguroDesgravamen.toFixed(2)),
-      total: Number((cuotaBase + seguroDesgravamen).toFixed(2)),
-      saldo_pendiente: Number(saldo.toFixed(2)),
+      seguro: Number(seguro.toFixed(2)),
+      total: Number(cuotaPeriodo.toFixed(2)),
+      saldo_pendiente: Number(Math.max(0, saldo).toFixed(2)),
       pagada: false,
       modo: esAproximado ? 'aproximado' : 'calculado',
     })
@@ -244,14 +267,16 @@ function generarCuotaUnica(monto, tea, fechaInicio, seguro = 0, esAproximado = f
     (fechaVenc - new Date(fechaInicio)) / (1000 * 60 * 60 * 24)
   )
   const interes = monto * teaDec * (diasPrestamo / 365)
-  const total = monto + interes + seguro
+  const tasaSeguro = (seguro || 0) / 100
+  const seguroMonto = monto * tasaSeguro * (diasPrestamo / 30) // aproximación a meses
+  const total = monto + interes + seguroMonto
 
   return [{
     numero: 1,
     fecha: fechaVenc.toISOString().split('T')[0],
     capital: Number(monto.toFixed(2)),
     interes: Number(interes.toFixed(2)),
-    seguro: Number(seguro.toFixed(2)),
+    seguro: Number(seguroMonto.toFixed(2)),
     total: Number(total.toFixed(2)),
     saldo_pendiente: 0,
     pagada: false,

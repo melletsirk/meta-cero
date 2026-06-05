@@ -147,3 +147,6 @@ ALTER TABLE public.cuotas
 ALTER TABLE public.cuotas
   ADD CONSTRAINT cuotas_modo_check
     CHECK (modo IN ('manual', 'calculado', 'aproximado'));
+
+ALTER TABLE public.deudas 
+ADD COLUMN tasa_moratoria NUMERIC(6, 2);

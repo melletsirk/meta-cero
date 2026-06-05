@@ -76,7 +76,7 @@ export const useDeudasStore = defineStore('deudas', () => {
         const cuotasPayload = cuotas.map(c => ({
           deuda_id: deudaData.id,
           numero: c.numero,
-          fecha: c.fecha,
+          fecha: c.fecha || null,
           capital: c.capital,
           interes: c.interes,
           seguro: c.seguro,
