@@ -166,36 +166,21 @@ export function simboloMoneda(moneda = 'PEN') {
  * @param {number}        numCuotas          Número de cuotas
  * @param {Date|string}   fechaInicio        Fecha de desembolso
  * @param {string}        frecuencia         Clave de FRECUENCIAS ('mensual', etc.)
- * @param {number}        tasaSeguroDesgravamen Porcentaje de seguro por cuota (opcional)
  * @param {boolean}       esAproximado       true si se usa TCEA en lugar de TEA pura
  * @returns {Array}       Array de cuotas
  */
-export function generarCronogramaFrances(
-  monto,
-  tea,
-  numCuotas,
-  fechaInicio,
-  frecuencia = 'mensual',
-  seguroDesgravamen = 0,
-  esAproximado = false,
-  base = 365,
-  redondearCuota = false
-) {
+export function generarCronogramaFrances(monto, tea, numCuotas, fechaInicio, frecuencia = 'mensual', esAproximado = false, base = 365, redondearCuota = false) {
   // Cuota única: no hay amortización progresiva
   if (frecuencia === 'cuota_unica') {
-    return generarCuotaUnica(monto, tea, fechaInicio, seguroDesgravamen, esAproximado)
+    return generarCuotaUnica(monto, tea, fechaInicio, 0, esAproximado)
   }
 
   const tasaInteres = calcularTasaPeriodica(tea, frecuencia, base)
   const dias = FRECUENCIAS[frecuencia]?.dias ?? 30
   
-  // El seguro se ingresa como % mensual, lo prorrateamos a los días del periodo
-  const tasaSeguroMensual = (seguroDesgravamen || 0) / 100
-  const tasaSeguro = tasaSeguroMensual * (dias / 30)
-  
-  const tasaTotal = tasaInteres + tasaSeguro
+  const tasaTotal = tasaInteres
 
-  // Cuota base (capital + interés + seguro), fórmula francesa
+  // Cuota base (capital + interés), fórmula francesa
   let cuotaBase = 0
   if (tasaTotal > 0) {
     const factor = Math.pow(1 + tasaTotal, numCuotas)
@@ -219,19 +204,17 @@ export function generarCronogramaFrances(
 
     // Truncar interés a 2 decimales (como hacen las cooperativas)
     const interesExacto = saldo * tasaInteres
-    const seguroExacto = saldo * tasaSeguro
     const interes = redondearCuota
       ? Math.floor(interesExacto * 100) / 100
       : Number(interesExacto.toFixed(2))
-    const seguro = Number(seguroExacto.toFixed(2))
 
     let cuotaPeriodo = cuotaBase
-    let capital = cuotaPeriodo - interes - seguro
+    let capital = cuotaPeriodo - interes
 
     // Ajuste en última cuota por redondeos acumulados
     if (i === numCuotas) {
       capital = saldo
-      cuotaPeriodo = capital + interes + seguro
+      cuotaPeriodo = capital + interes
     }
 
     saldo -= capital
@@ -242,7 +225,6 @@ export function generarCronogramaFrances(
       fecha: fechaActual.toISOString().split('T')[0],
       capital: Number(capital.toFixed(2)),
       interes: Number(interes.toFixed(2)),
-      seguro: Number(seguro.toFixed(2)),
       total: Number(cuotaPeriodo.toFixed(2)),
       saldo_pendiente: Number(Math.max(0, saldo).toFixed(2)),
       pagada: false,
@@ -258,7 +240,7 @@ export function generarCronogramaFrances(
  * Interés simple: I = P * TEA * (días / 365)
  * Total = P + I
  */
-function generarCuotaUnica(monto, tea, fechaInicio, seguro = 0, esAproximado = false) {
+function generarCuotaUnica(monto, tea, fechaInicio, esAproximado = false) {
   const teaDec = (tea || 0) / 100
   const fechaVenc = new Date(fechaInicio)
   fechaVenc.setFullYear(fechaVenc.getFullYear() + 1) // 1 año por defecto para cuota única
@@ -267,16 +249,13 @@ function generarCuotaUnica(monto, tea, fechaInicio, seguro = 0, esAproximado = f
     (fechaVenc - new Date(fechaInicio)) / (1000 * 60 * 60 * 24)
   )
   const interes = monto * teaDec * (diasPrestamo / 365)
-  const tasaSeguro = (seguro || 0) / 100
-  const seguroMonto = monto * tasaSeguro * (diasPrestamo / 30) // aproximación a meses
-  const total = monto + interes + seguroMonto
+  const total = monto + interes
 
   return [{
     numero: 1,
     fecha: fechaVenc.toISOString().split('T')[0],
     capital: Number(monto.toFixed(2)),
     interes: Number(interes.toFixed(2)),
-    seguro: Number(seguroMonto.toFixed(2)),
     total: Number(total.toFixed(2)),
     saldo_pendiente: 0,
     pagada: false,

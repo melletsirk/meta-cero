@@ -149,4 +149,18 @@ ALTER TABLE public.cuotas
     CHECK (modo IN ('manual', 'calculado', 'aproximado'));
 
 ALTER TABLE public.deudas 
-ADD COLUMN tasa_moratoria NUMERIC(6, 2);
+ADD COLUMN IF NOT EXISTS tasa_moratoria NUMERIC(6, 2);
+
+-- ============================================================
+-- MIGRACIÓN v4: Simplificación de la app (Borrado de seguro, mora, etc.)
+-- ============================================================
+
+ALTER TABLE public.deudas
+  DROP COLUMN IF EXISTS tiene_seguro,
+  DROP COLUMN IF EXISTS monto_seguro,
+  DROP COLUMN IF EXISTS otros_cargos,
+  DROP COLUMN IF EXISTS tasa_moratoria,
+  DROP COLUMN IF EXISTS dia_vencimiento; -- Obsoleto desde v3
+
+ALTER TABLE public.cuotas
+  DROP COLUMN IF EXISTS seguro;

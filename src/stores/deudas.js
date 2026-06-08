@@ -79,10 +79,9 @@ export const useDeudasStore = defineStore('deudas', () => {
           fecha: c.fecha || null,
           capital: c.capital,
           interes: c.interes,
-          seguro: c.seguro,
           total: c.total,
           saldo_pendiente: c.saldo_pendiente,
-          pagada: false,
+          pagada: c.pagada || false,
           modo: c.modo || 'calculado',
         }))
 
@@ -96,7 +95,7 @@ export const useDeudasStore = defineStore('deudas', () => {
         cuotasPorDeuda.value[deudaData.id] = cuotas.map((c, i) => ({
           ...c,
           id: null, // no tenemos el UUID aún, se cargará en fetchCuotas
-          pagada: false,
+          pagada: c.pagada || false,
         }))
       }
 

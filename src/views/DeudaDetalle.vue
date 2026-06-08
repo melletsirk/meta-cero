@@ -31,9 +31,9 @@ const teaAlert = computed(() => {
 const teaBadgeClass = computed(() => {
   switch (teaAlert.value.level) {
     case 'yellow': return 'bg-yellow-100 text-yellow-800 border-yellow-300'
-    case 'green':  return 'bg-emerald-100 text-emerald-800 border-emerald-300'
+    case 'green': return 'bg-emerald-100 text-emerald-800 border-emerald-300'
     case 'orange': return 'bg-orange-100 text-orange-800 border-orange-300'
-    case 'red':    return 'bg-red-100 text-red-800 border-red-300'
+    case 'red': return 'bg-red-100 text-red-800 border-red-300'
     default: return 'bg-slate-100 text-slate-600 border-slate-200'
   }
 })
@@ -122,7 +122,8 @@ const handleEliminar = async () => {
     <!-- Estado no encontrado -->
     <div v-if="!deuda && !deudasStore.loading" class="text-center py-20 text-slate-400">
       <p class="text-lg font-bold">Deuda no encontrada</p>
-      <button @click="router.push('/')" class="mt-4 text-indigo-600 font-semibold hover:underline">Volver al inicio</button>
+      <button @click="router.push('/')" class="mt-4 text-indigo-600 font-semibold hover:underline">Volver al
+        inicio</button>
     </div>
 
     <!-- Loading -->
@@ -132,16 +133,22 @@ const handleEliminar = async () => {
 
     <template v-else-if="deuda">
       <!-- ── Header de la Deuda ── -->
-      <div class="glass rounded-3xl border border-white/60 shadow-xl shadow-slate-200/40 p-6 sm:p-8 mb-6 relative overflow-hidden">
-        <div class="absolute -top-20 -right-20 w-48 h-48 bg-indigo-100 rounded-full mix-blend-multiply filter blur-3xl opacity-60 pointer-events-none"></div>
+      <div
+        class="glass rounded-3xl border border-white/60 shadow-xl shadow-slate-200/40 p-6 sm:p-8 mb-6 relative overflow-hidden">
+        <div
+          class="absolute -top-20 -right-20 w-48 h-48 bg-indigo-100 rounded-full mix-blend-multiply filter blur-3xl opacity-60 pointer-events-none">
+        </div>
 
         <div class="flex flex-col sm:flex-row justify-between gap-4 relative z-10">
           <div class="flex items-start gap-4">
             <!-- Ícono tipo -->
             <div class="h-14 w-14 rounded-2xl flex items-center justify-center shadow-sm shrink-0"
               :class="deuda.tipo === 'formal' ? 'bg-gradient-to-br from-blue-50 to-indigo-100 text-indigo-600 border border-indigo-100' : 'bg-gradient-to-br from-purple-50 to-pink-100 text-purple-600 border border-purple-100'">
-              <svg v-if="deuda.tipo === 'formal'" xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M10.496 2.132a1 1 0 00-.992 0l-7 4A1 1 0 003 7v10a1 1 0 001 1h12a1 1 0 001-1V7a1 1 0 00-.504-.868l-7-4zM5 9a1 1 0 00-1 1v4a1 1 0 102 0v-4a1 1 0 00-1-1zm3 0a1 1 0 00-1 1v4a1 1 0 102 0v-4a1 1 0 00-1-1zm4 1a1 1 0 11-2 0v4a1 1 0 112 0v-4zm2-1a1 1 0 00-1 1v4a1 1 0 102 0v-4a1 1 0 00-1-1z" clip-rule="evenodd" />
+              <svg v-if="deuda.tipo === 'formal'" xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" viewBox="0 0 20 20"
+                fill="currentColor">
+                <path fill-rule="evenodd"
+                  d="M10.496 2.132a1 1 0 00-.992 0l-7 4A1 1 0 003 7v10a1 1 0 001 1h12a1 1 0 001-1V7a1 1 0 00-.504-.868l-7-4zM5 9a1 1 0 00-1 1v4a1 1 0 102 0v-4a1 1 0 00-1-1zm3 0a1 1 0 00-1 1v4a1 1 0 102 0v-4a1 1 0 00-1-1zm4 1a1 1 0 11-2 0v4a1 1 0 112 0v-4zm2-1a1 1 0 00-1 1v4a1 1 0 102 0v-4a1 1 0 00-1-1z"
+                  clip-rule="evenodd" />
               </svg>
               <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
@@ -160,15 +167,9 @@ const handleEliminar = async () => {
                   {{ deuda.moneda === 'USD' ? '$ USD' : 'S/ PEN' }}
                 </span>
                 <!-- TEA/TCEA badge -->
-                <span v-if="deuda.tea || deuda.tcea"
-                  class="text-xs font-bold px-2 py-0.5 rounded-full border"
+                <span v-if="deuda.tea || deuda.tcea" class="text-xs font-bold px-2 py-0.5 rounded-full border"
                   :class="teaBadgeClass">
                   {{ deuda.tea ? `TEA ${deuda.tea}%` : `TCEA ${deuda.tcea}%` }}
-                </span>
-                <!-- Moratoria badge -->
-                <span v-if="deuda.tasa_moratoria"
-                  class="text-xs font-bold px-2 py-0.5 rounded-full border bg-red-50 text-red-700 border-red-200" title="Tasa Moratoria">
-                  Mora {{ deuda.tasa_moratoria }}%
                 </span>
               </div>
             </div>
@@ -187,8 +188,10 @@ const handleEliminar = async () => {
             <button @click="handleEliminar"
               class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
               title="Eliminar deuda">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
             </button>
           </div>
@@ -198,27 +201,37 @@ const handleEliminar = async () => {
       <!-- ── Métricas clave ── -->
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
         <div class="glass rounded-2xl border border-white/60 shadow-sm p-4 relative overflow-hidden group">
-          <div class="absolute -right-3 -top-3 w-16 h-16 bg-red-400 rounded-full mix-blend-multiply filter blur-2xl opacity-10"></div>
+          <div
+            class="absolute -right-3 -top-3 w-16 h-16 bg-red-400 rounded-full mix-blend-multiply filter blur-2xl opacity-10">
+          </div>
           <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Pendiente</p>
           <p class="text-xl font-extrabold text-slate-900 leading-tight">{{ fmt(deuda.monto_pendiente) }}</p>
         </div>
         <div class="glass rounded-2xl border border-white/60 shadow-sm p-4 relative overflow-hidden">
-          <div class="absolute -right-3 -top-3 w-16 h-16 bg-indigo-400 rounded-full mix-blend-multiply filter blur-2xl opacity-10"></div>
+          <div
+            class="absolute -right-3 -top-3 w-16 h-16 bg-indigo-400 rounded-full mix-blend-multiply filter blur-2xl opacity-10">
+          </div>
           <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Original</p>
           <p class="text-xl font-extrabold text-slate-900 leading-tight">{{ fmt(deuda.monto_original) }}</p>
         </div>
         <div class="glass rounded-2xl border border-white/60 shadow-sm p-4 relative overflow-hidden">
-          <div class="absolute -right-3 -top-3 w-16 h-16 bg-emerald-400 rounded-full mix-blend-multiply filter blur-2xl opacity-10"></div>
+          <div
+            class="absolute -right-3 -top-3 w-16 h-16 bg-emerald-400 rounded-full mix-blend-multiply filter blur-2xl opacity-10">
+          </div>
           <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Cuotas pagadas</p>
           <p class="text-xl font-extrabold text-slate-900 leading-tight">
             {{ cuotasPagadas }} <span class="text-sm font-semibold text-slate-400">/ {{ deuda.num_cuotas }}</span>
           </p>
         </div>
         <div class="glass rounded-2xl border border-white/60 shadow-sm p-4 relative overflow-hidden">
-          <div class="absolute -right-3 -top-3 w-16 h-16 bg-amber-400 rounded-full mix-blend-multiply filter blur-2xl opacity-10"></div>
+          <div
+            class="absolute -right-3 -top-3 w-16 h-16 bg-amber-400 rounded-full mix-blend-multiply filter blur-2xl opacity-10">
+          </div>
           <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Inicio</p>
           <p class="text-base font-extrabold text-slate-900 leading-tight">
-            {{ deuda.fecha_inicio ? new Date(deuda.fecha_inicio + 'T12:00:00').toLocaleDateString('es-PE', { day:'2-digit', month:'short', year:'numeric' }) : '-' }}
+            {{ deuda.fecha_inicio ? new Date(deuda.fecha_inicio + 'T12:00:00').toLocaleDateString('es-PE', {
+              day: '2-digit', month: 'short', year: 'numeric'
+            }) : '-' }}
           </p>
         </div>
       </div>
@@ -231,13 +244,8 @@ const handleEliminar = async () => {
         </div>
 
         <template v-else>
-          <CronogramaTable
-            :cuotas="cuotas"
-            :moneda="deuda.moneda"
-            :es-aproximado="esAproximado"
-            :toggling-id="togglingId"
-            @toggle="handleToggleCuota"
-          />
+          <CronogramaTable :cuotas="cuotas" :moneda="deuda.moneda" :es-aproximado="esAproximado"
+            :toggling-id="togglingId" @toggle="handleToggleCuota" />
         </template>
       </div>
     </template>
