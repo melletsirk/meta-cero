@@ -53,15 +53,6 @@ export function calcularTasaPeriodica(tea, frecuencia = 'mensual', base = 365) {
   }
 }
 
-/**
- * Convierte TEA a Tasa Efectiva Mensual (TEM) — compatibilidad legada.
- * @param {number} tea - TEA en porcentaje
- * @returns {number} TEM en decimal
- */
-export function calcularTasaMensual(tea) {
-  return calcularTasaPeriodica(tea, 'mensual')
-}
-
 // ---------------------------------------------------------------------------
 // ALERTAS DE TEA
 // ---------------------------------------------------------------------------
@@ -137,14 +128,7 @@ export function formatearMoneda(monto, moneda = 'PEN') {
 }
 
 /**
- * Alias de compatibilidad legada.
- */
-export function formatearMonedaPeru(monto) {
-  return formatearMoneda(monto, 'PEN')
-}
-
-/**
- * Devuelve el símbolo de prefijo de moneda.
+ * Retorna el símbolo o prefijo de la moneda.
  * @param {'PEN'|'USD'} moneda
  * @returns {string}
  */
