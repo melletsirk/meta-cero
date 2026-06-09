@@ -77,8 +77,6 @@ const loading = ref(false)
 const showTceaTooltip = ref(false)
 
 const cuotasManuales = ref([])
-const modoIngreso = ref('automatico')
-const pagadasIndices = ref(new Set())
 
 
 // ---------------------------------------------------------------------------
@@ -118,44 +116,43 @@ const esCuotaUnica = computed(() => formData.value.frecuencia_pago === 'cuota_un
 // Preview del cronograma en tiempo real
 // ---------------------------------------------------------------------------
 
-const cronogramaPreview = computed(() => {
-  const { monto_original, tea, tcea, num_cuotas, fecha_inicio, frecuencia_pago } = formData.value
-  const tasaUsada = tea || tcea
-  if (!monto_original || !tasaUsada || (!num_cuotas && frecuencia_pago !== 'cuota_unica') || !fecha_inicio) return []
-  try {
-    const cuotas = generarCronogramaFrances(
-      Number(monto_original),
-      Number(tasaUsada),
-      Number(num_cuotas) || 1,
-      fecha_inicio,
-      frecuencia_pago,
-      !tea && !!tcea, // es aproximado
-      Number(formData.value.base_calculo) || 365,
-      formData.value.redondear_cuota
-    )
-    return cuotas.map((c, i) => ({
-      ...c,
-      pagada: pagadasIndices.value.has(i)
-    }))
-  } catch { return [] }
-})
-
-const cuotasFinales = computed(() => modoIngreso.value === 'manual' ? cuotasManuales.value : cronogramaPreview.value)
-
-const togglePagada = (cuota) => {
-  if (modoIngreso.value === 'automatico') {
-    const idx = cuota.numero - 1
-    const newSet = new Set(pagadasIndices.value)
-    if (newSet.has(idx)) newSet.delete(idx)
-    else newSet.add(idx)
-    pagadasIndices.value = newSet
-  } else {
-    const idx = cuotasManuales.value.findIndex(c => c.numero === cuota.numero)
-    if (idx !== -1) {
-      cuotasManuales.value[idx].pagada = !cuotasManuales.value[idx].pagada
+watch(
+  () => [
+    formData.value.monto_original,
+    formData.value.tea,
+    formData.value.tcea,
+    formData.value.num_cuotas,
+    formData.value.fecha_inicio,
+    formData.value.frecuencia_pago,
+    formData.value.base_calculo,
+    formData.value.redondear_cuota
+  ],
+  () => {
+    const { monto_original, tea, tcea, num_cuotas, fecha_inicio, frecuencia_pago } = formData.value
+    const tasaUsada = tea || tcea
+    if (!monto_original || !tasaUsada || (!num_cuotas && frecuencia_pago !== 'cuota_unica') || !fecha_inicio) {
+      return
     }
-  }
-}
+    
+    try {
+      cuotasManuales.value = generarCronogramaFrances(
+        Number(monto_original),
+        Number(tasaUsada),
+        Number(num_cuotas) || 1,
+        fecha_inicio,
+        frecuencia_pago,
+        !tea && !!tcea, // es aproximado
+        Number(formData.value.base_calculo) || 365,
+        formData.value.redondear_cuota
+      )
+    } catch {
+      // Ignorar errores de cálculo en tiempo de escritura
+    }
+  },
+  { deep: true, immediate: true }
+)
+
+const cuotasFinales = computed(() => cuotasManuales.value)
 
 const previewListo = computed(() => cuotasFinales.value.length > 0)
 
@@ -182,16 +179,19 @@ const handleSubmit = async () => {
     const { base_calculo, redondear_cuota, cuotas_pagadas, ...payloadLimpio } = formData.value
     const payload = { ...payloadLimpio }
 
-    const finalCuotasGuardar = cuotasFinales.value
+    // Asegurar que las cuotas a guardar tengan la marca de 'pagada' correcta
+    const pagadas = Number(cuotas_pagadas) || 0
+    const finalCuotasGuardar = cuotasFinales.value.map((c, i) => ({
+      ...c,
+      pagada: i < pagadas
+    }))
 
     // Calcular monto_pendiente
-    const pagadas = finalCuotasGuardar.filter(c => c.pagada)
-    if (pagadas.length === 0 || finalCuotasGuardar.length === 0) {
+    if (pagadas === 0 || finalCuotasGuardar.length === 0) {
       payload.monto_pendiente = payload.monto_original
     } else {
       // El saldo pendiente será el saldo de la última cuota que se marcó como pagada
-      // Asumimos que si hay N pagadas, la cuota N es la última pagada (cronológico)
-      const ultimaPagada = pagadas[pagadas.length - 1]
+      const ultimaPagada = finalCuotasGuardar[Math.min(pagadas, finalCuotasGuardar.length) - 1]
       payload.monto_pendiente = ultimaPagada ? ultimaPagada.saldo_pendiente : 0
     }
 
@@ -427,7 +427,7 @@ const handleSubmit = async () => {
       <hr class="border-slate-100" />
 
       <!-- ── Sección 3: Tasas de Interés ── -->
-      <div v-show="modoIngreso === 'automatico'" class="relative z-10">
+      <div class="relative z-10">
         <h3 class="text-base font-bold text-slate-900 mb-3 flex items-center gap-2">
           <span class="bg-amber-100 text-amber-600 p-1 rounded-md">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -529,24 +529,10 @@ const handleSubmit = async () => {
 
       <!-- ── Cronograma ── -->
       <div class="relative z-10">
-        <div class="mb-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h3 class="text-lg font-bold text-slate-900">Tu Plan de Pagos</h3>
-            <p class="text-xs text-slate-600 mt-0.5">Ingresa o ajusta las cuotas según tu contrato. Marca las que ya
-              pagaste.</p>
-          </div>
-          <div class="flex bg-slate-100 p-1.5 rounded-xl shrink-0 gap-1 border border-slate-200">
-            <button type="button" @click="modoIngreso = 'automatico'"
-              class="px-4 py-2 text-sm font-bold rounded-lg transition-colors"
-              :class="modoIngreso === 'automatico' ? 'bg-white text-indigo-700 shadow-md border border-slate-200' : 'text-slate-600 hover:text-slate-800'">
-              Calculado por la App
-            </button>
-            <button type="button" @click="modoIngreso = 'manual'"
-              class="px-4 py-2 text-sm font-bold rounded-lg transition-colors"
-              :class="modoIngreso === 'manual' ? 'bg-white text-indigo-700 shadow-md border border-slate-200' : 'text-slate-600 hover:text-slate-800'">
-              Copiar de mi Banco
-            </button>
-          </div>
+        <div class="mb-3">
+          <h3 class="text-lg font-bold text-slate-900">Tu Plan de Pagos</h3>
+          <p class="text-xs text-slate-600 mt-0.5">Ingresa o ajusta las cuotas según tu contrato. Marca las que ya
+            pagaste.</p>
         </div>
 
         <!-- Aviso cuando no hay datos suficientes -->
@@ -562,9 +548,7 @@ const handleSubmit = async () => {
 
         <!-- Tabla editable -->
         <EditableCronogramaTable v-if="previewListo" :model-value="cuotasFinales"
-          @update:model-value="val => { if (modoIngreso === 'manual') cuotasManuales = val }"
-          @toggle="togglePagada"
-          :readonly="modoIngreso === 'automatico'" :moneda="formData.moneda" />
+          @update:model-value="val => cuotasManuales = val" :moneda="formData.moneda" :es-aproximado="soloCon_TCEA" />
       </div>
 
       <!-- ── Botones ── -->
