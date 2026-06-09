@@ -60,7 +60,7 @@ const formData = ref({
   entidad: '',
   moneda: 'PEN',
   monto_original: null,
-  monto_pendiente: null,
+  cuotas_pagadas: 0,
   tea: null,
   tcea: null,
   tasa_mensual: 0,
@@ -149,7 +149,7 @@ const esCuotaUnica = computed(() => formData.value.frecuencia_pago === 'cuota_un
 // Preview del cronograma en tiempo real
 // ---------------------------------------------------------------------------
 const cronogramaPreview = computed(() => {
-  const { monto_original, monto_pendiente, tea, tcea, num_cuotas, fecha_inicio, frecuencia_pago } = formData.value
+  const { monto_original, cuotas_pagadas, tea, tcea, num_cuotas, fecha_inicio, frecuencia_pago } = formData.value
   const tasaUsada = tea || tcea
   if (!monto_original || !tasaUsada || (!num_cuotas && frecuencia_pago !== 'cuota_unica') || !fecha_inicio) return []
   try {
@@ -164,17 +164,11 @@ const cronogramaPreview = computed(() => {
       formData.value.redondear_cuota
     )
 
-    // Si el monto pendiente es menor al original, marcamos las cuotas previas como pagadas
-    const pendiente = Number(monto_pendiente)
-    if (pendiente >= 0 && pendiente < Number(monto_original)) {
-      for (const cuota of cuotas) {
-        // Se considera pagada si el saldo que deja es mayor o igual al monto pendiente reportado
-        // (restamos un pequeño margen de tolerancia por posibles redondeos en la cuota real)
-        if (cuota.saldo_pendiente >= pendiente - 2) {
-          cuota.pagada = true
-        } else {
-          break
-        }
+    // Marcar como pagadas según el número de cuotas indicadas
+    const pagadas = Number(cuotas_pagadas) || 0
+    if (pagadas > 0) {
+      for (let i = 0; i < pagadas && i < cuotas.length; i++) {
+        cuotas[i].pagada = true
       }
     }
 
@@ -206,8 +200,19 @@ const handleSubmit = async () => {
     if (formData.value.tea && !formData.value.tasa_mensual) {
       calcularTasaMensualDesdeTEA()
     }
-    const { base_calculo, redondear_cuota, ...payloadLimpio } = formData.value
+    const { base_calculo, redondear_cuota, cuotas_pagadas, ...payloadLimpio } = formData.value
     const payload = { ...payloadLimpio }
+    
+    // Calcular monto_pendiente
+    const pagadas = Number(cuotas_pagadas) || 0
+    if (pagadas === 0 || cuotasFinales.value.length === 0) {
+      payload.monto_pendiente = payload.monto_original
+    } else {
+      // El saldo pendiente será el saldo de la última cuota que se marcó como pagada
+      const ultimaPagada = cuotasFinales.value[Math.min(pagadas, cuotasFinales.value.length) - 1]
+      payload.monto_pendiente = ultimaPagada ? ultimaPagada.saldo_pendiente : 0
+    }
+
     if (payload.fecha_vencimiento === '') payload.fecha_vencimiento = null
     if (payload.tea === '') payload.tea = null
     if (payload.tcea === '') payload.tcea = null
@@ -371,18 +376,17 @@ const handleSubmit = async () => {
             </div>
           </div>
 
-          <!-- Monto Pendiente -->
+          <!-- Cuotas Pagadas -->
           <div class="group relative">
             <label
-              class="block text-sm font-bold text-slate-700 mb-1 group-focus-within:text-indigo-600 transition-colors">Monto
-              Pendiente Actual</label>
+              class="block text-sm font-bold text-slate-700 mb-1 group-focus-within:text-indigo-600 transition-colors">
+              ¿Hasta qué cuota ya pagó?
+            </label>
             <div class="relative">
-              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">{{ prefijo
-              }}</span>
-              <input id="deuda-monto-pendiente" v-model.number="formData.monto_pendiente" type="number" step="0.01"
-                required min="0"
-                class="w-full border border-slate-200 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 pl-8 p-2.5 text-base bg-white/70 backdrop-blur-sm transition-all hover:bg-white"
-                placeholder="0.00" />
+              <input id="deuda-cuotas-pagadas" v-model.number="formData.cuotas_pagadas" type="number" step="1"
+                required min="0" :max="formData.num_cuotas || undefined"
+                class="w-full border border-slate-200 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 p-2.5 text-base bg-white/70 backdrop-blur-sm transition-all hover:bg-white"
+                placeholder="0 si es nueva" />
             </div>
           </div>
 
