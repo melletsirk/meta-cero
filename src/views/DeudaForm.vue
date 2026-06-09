@@ -81,7 +81,7 @@ const modoIngreso = ref('automatico')
 const cuotasManuales = ref([])
 
 watch(modoIngreso, (newVal) => {
-  if (newVal === 'manual' && cuotasManuales.value.length === 0) {
+  if (newVal === 'manual') {
     if (cronogramaPreview.value.length > 0) {
       cuotasManuales.value = JSON.parse(JSON.stringify(cronogramaPreview.value))
     } else {
@@ -97,13 +97,17 @@ watch(modoIngreso, (newVal) => {
 
 watch(() => formData.value.num_cuotas, (newNum) => {
   if (modoIngreso.value === 'manual' && newNum > 0) {
-    const current = cuotasManuales.value.length
-    if (newNum > current) {
-      for (let i = current + 1; i <= newNum; i++) {
-        cuotasManuales.value.push({ numero: i, fecha: '', capital: 0, interes: 0, total: 0, saldo_pendiente: 0, modo: 'manual' })
+    if (cronogramaPreview.value.length > 0) {
+      cuotasManuales.value = JSON.parse(JSON.stringify(cronogramaPreview.value))
+    } else {
+      const current = cuotasManuales.value.length
+      if (newNum > current) {
+        for (let i = current + 1; i <= newNum; i++) {
+          cuotasManuales.value.push({ numero: i, fecha: '', capital: 0, interes: 0, total: 0, saldo_pendiente: 0, modo: 'manual' })
+        }
+      } else if (newNum < current) {
+        cuotasManuales.value = cuotasManuales.value.slice(0, newNum)
       }
-    } else if (newNum < current) {
-      cuotasManuales.value = cuotasManuales.value.slice(0, newNum)
     }
   }
 })

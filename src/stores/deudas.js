@@ -14,13 +14,43 @@ export const useDeudasStore = defineStore('deudas', () => {
   // ---------------------------------------------------------------------------
   // Computed — Dashboard
   // ---------------------------------------------------------------------------
-  const deudaTotal = computed(() =>
-    deudas.value.reduce((acc, deuda) => acc + Number(deuda.monto_pendiente), 0)
-  )
+  const deudaTotal = computed(() => {
+    return deudas.value.reduce((acc, deuda) => {
+      const cuotas = cuotasPorDeuda.value[deuda.id] || []
+      const pendientes = cuotas.filter(c => !c.pagada)
+      
+      if (cuotas.length === 0) {
+        // Fallback en caso no haya cuotas por alguna razón
+        return acc + Number(deuda.monto_pendiente || 0)
+      }
+      
+      const sumaConIntereses = pendientes.reduce((sum, c) => sum + Number(c.total || 0), 0)
+      return acc + sumaConIntereses
+    }, 0)
+  })
 
-  const cuotaTotalMes = computed(() =>
-    deudas.value.reduce((acc, deuda) => acc + (Number(deuda.monto_cuota) || 0), 0)
-  )
+  const cuotaTotalMes = computed(() => {
+    const ahora = new Date()
+    const mesActual = ahora.getMonth()
+    const anoActual = ahora.getFullYear()
+    
+    return deudas.value.reduce((acc, deuda) => {
+      const cuotas = cuotasPorDeuda.value[deuda.id] || []
+      
+      const cuotasDelMes = cuotas.filter(c => {
+        if (c.pagada || !c.fecha) return false
+        
+        // Asumiendo formato YYYY-MM-DD
+        const [year, month] = c.fecha.split('-').map(Number)
+        // month es 1-indexed, getMonth() es 0-indexed
+        return (year === anoActual && (month - 1) === mesActual)
+      })
+      
+      const sumaMes = cuotasDelMes.reduce((sum, c) => sum + Number(c.total || 0), 0)
+      
+      return acc + sumaMes
+    }, 0)
+  })
 
   const deudasActivas = computed(() =>
     deudas.value.filter(d => d.estado === 'activa')
@@ -41,11 +71,18 @@ export const useDeudasStore = defineStore('deudas', () => {
     try {
       const { data, error } = await supabase
         .from('deudas')
-        .select('*')
+        .select('*, cuotas(*)')
         .order('created_at', { ascending: false })
 
       if (error) throw error
       deudas.value = data
+      
+      // Llenamos la caché de cuotas
+      data.forEach(d => {
+        if (d.cuotas) {
+          cuotasPorDeuda.value[d.id] = d.cuotas.sort((a,b) => a.numero - b.numero)
+        }
+      })
     } catch (error) {
       console.error('Error fetching deudas:', error)
     } finally {
