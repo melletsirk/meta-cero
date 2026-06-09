@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useDeudasStore } from '../stores/deudas'
 import { useNotificationsStore } from '../stores/notifications'
 import { formatearMoneda, alertaTEA, FRECUENCIAS } from '../lib/finanzas'
-import CronogramaTable from '../components/CronogramaTable.vue'
+import EditableCronogramaTable from '../components/EditableCronogramaTable.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -244,7 +244,7 @@ const handleEliminar = async () => {
         </div>
 
         <template v-else>
-          <CronogramaTable :cuotas="cuotas" :moneda="deuda.moneda" :es-aproximado="esAproximado"
+          <EditableCronogramaTable v-model="cuotas" :moneda="deuda.moneda" readonly
             :toggling-id="togglingId" @toggle="handleToggleCuota" />
         </template>
       </div>

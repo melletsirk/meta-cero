@@ -15,12 +15,12 @@ export const useDeudasStore = defineStore('deudas', () => {
   // Computed — Dashboard
   // ---------------------------------------------------------------------------
   const deudaTotal = computed(() => {
+    if (!Array.isArray(deudas.value)) return 0
     return deudas.value.reduce((acc, deuda) => {
       const cuotas = cuotasPorDeuda.value[deuda.id] || []
       const pendientes = cuotas.filter(c => !c.pagada)
       
       if (cuotas.length === 0) {
-        // Fallback en caso no haya cuotas por alguna razón
         return acc + Number(deuda.monto_pendiente || 0)
       }
       
@@ -30,6 +30,7 @@ export const useDeudasStore = defineStore('deudas', () => {
   })
 
   const cuotaTotalMes = computed(() => {
+    if (!Array.isArray(deudas.value)) return 0
     const ahora = new Date()
     const mesActual = ahora.getMonth()
     const anoActual = ahora.getFullYear()
@@ -38,11 +39,13 @@ export const useDeudasStore = defineStore('deudas', () => {
       const cuotas = cuotasPorDeuda.value[deuda.id] || []
       
       const cuotasDelMes = cuotas.filter(c => {
-        if (c.pagada || !c.fecha) return false
+        if (c.pagada || !c.fecha || typeof c.fecha !== 'string') return false
         
-        // Asumiendo formato YYYY-MM-DD
-        const [year, month] = c.fecha.split('-').map(Number)
-        // month es 1-indexed, getMonth() es 0-indexed
+        const parts = c.fecha.split('-')
+        if (parts.length < 2) return false
+        
+        const year = Number(parts[0])
+        const month = Number(parts[1])
         return (year === anoActual && (month - 1) === mesActual)
       })
       
@@ -75,10 +78,10 @@ export const useDeudasStore = defineStore('deudas', () => {
         .order('created_at', { ascending: false })
 
       if (error) throw error
-      deudas.value = data
+      deudas.value = data || []
       
       // Llenamos la caché de cuotas
-      data.forEach(d => {
+      ;(data || []).forEach(d => {
         if (d.cuotas) {
           cuotasPorDeuda.value[d.id] = d.cuotas.sort((a,b) => a.numero - b.numero)
         }
