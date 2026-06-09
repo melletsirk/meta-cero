@@ -4,7 +4,6 @@ import { useRouter } from 'vue-router'
 import { useDeudasStore } from '../stores/deudas'
 import { useNotificationsStore } from '../stores/notifications'
 import { calcularTasaPeriodica, alertaTEA, simboloMoneda, FRECUENCIAS, generarCronogramaFrances } from '../lib/finanzas'
-import CronogramaTable from '../components/CronogramaTable.vue'
 import EditableCronogramaTable from '../components/EditableCronogramaTable.vue'
 import { watch } from 'vue'
 
@@ -77,40 +76,10 @@ const formData = ref({
 const loading = ref(false)
 const showTceaTooltip = ref(false)
 
-const modoIngreso = ref('automatico')
 const cuotasManuales = ref([])
+const modoIngreso = ref('automatico')
+const pagadasIndices = ref(new Set())
 
-watch(modoIngreso, (newVal) => {
-  if (newVal === 'manual') {
-    if (cronogramaPreview.value.length > 0) {
-      cuotasManuales.value = JSON.parse(JSON.stringify(cronogramaPreview.value))
-    } else {
-      const num = formData.value.num_cuotas || 1
-      const blank = []
-      for (let i = 1; i <= num; i++) {
-        blank.push({ numero: i, fecha: '', capital: 0, interes: 0, total: 0, saldo_pendiente: 0, modo: 'manual' })
-      }
-      cuotasManuales.value = blank
-    }
-  }
-})
-
-watch(() => formData.value.num_cuotas, (newNum) => {
-  if (modoIngreso.value === 'manual' && newNum > 0) {
-    if (cronogramaPreview.value.length > 0) {
-      cuotasManuales.value = JSON.parse(JSON.stringify(cronogramaPreview.value))
-    } else {
-      const current = cuotasManuales.value.length
-      if (newNum > current) {
-        for (let i = current + 1; i <= newNum; i++) {
-          cuotasManuales.value.push({ numero: i, fecha: '', capital: 0, interes: 0, total: 0, saldo_pendiente: 0, modo: 'manual' })
-        }
-      } else if (newNum < current) {
-        cuotasManuales.value = cuotasManuales.value.slice(0, newNum)
-      }
-    }
-  }
-})
 
 // ---------------------------------------------------------------------------
 // Computed helpers
@@ -148,8 +117,9 @@ const esCuotaUnica = computed(() => formData.value.frecuencia_pago === 'cuota_un
 // ---------------------------------------------------------------------------
 // Preview del cronograma en tiempo real
 // ---------------------------------------------------------------------------
+
 const cronogramaPreview = computed(() => {
-  const { monto_original, cuotas_pagadas, tea, tcea, num_cuotas, fecha_inicio, frecuencia_pago } = formData.value
+  const { monto_original, tea, tcea, num_cuotas, fecha_inicio, frecuencia_pago } = formData.value
   const tasaUsada = tea || tcea
   if (!monto_original || !tasaUsada || (!num_cuotas && frecuencia_pago !== 'cuota_unica') || !fecha_inicio) return []
   try {
@@ -163,20 +133,29 @@ const cronogramaPreview = computed(() => {
       Number(formData.value.base_calculo) || 365,
       formData.value.redondear_cuota
     )
-
-    // Marcar como pagadas según el número de cuotas indicadas
-    const pagadas = Number(cuotas_pagadas) || 0
-    if (pagadas > 0) {
-      for (let i = 0; i < pagadas && i < cuotas.length; i++) {
-        cuotas[i].pagada = true
-      }
-    }
-
-    return cuotas
+    return cuotas.map((c, i) => ({
+      ...c,
+      pagada: pagadasIndices.value.has(i)
+    }))
   } catch { return [] }
 })
 
 const cuotasFinales = computed(() => modoIngreso.value === 'manual' ? cuotasManuales.value : cronogramaPreview.value)
+
+const togglePagada = (cuota) => {
+  if (modoIngreso.value === 'automatico') {
+    const idx = cuota.numero - 1
+    const newSet = new Set(pagadasIndices.value)
+    if (newSet.has(idx)) newSet.delete(idx)
+    else newSet.add(idx)
+    pagadasIndices.value = newSet
+  } else {
+    const idx = cuotasManuales.value.findIndex(c => c.numero === cuota.numero)
+    if (idx !== -1) {
+      cuotasManuales.value[idx].pagada = !cuotasManuales.value[idx].pagada
+    }
+  }
+}
 
 const previewListo = computed(() => cuotasFinales.value.length > 0)
 
@@ -202,21 +181,24 @@ const handleSubmit = async () => {
     }
     const { base_calculo, redondear_cuota, cuotas_pagadas, ...payloadLimpio } = formData.value
     const payload = { ...payloadLimpio }
-    
+
+    const finalCuotasGuardar = cuotasFinales.value
+
     // Calcular monto_pendiente
-    const pagadas = Number(cuotas_pagadas) || 0
-    if (pagadas === 0 || cuotasFinales.value.length === 0) {
+    const pagadas = finalCuotasGuardar.filter(c => c.pagada)
+    if (pagadas.length === 0 || finalCuotasGuardar.length === 0) {
       payload.monto_pendiente = payload.monto_original
     } else {
       // El saldo pendiente será el saldo de la última cuota que se marcó como pagada
-      const ultimaPagada = cuotasFinales.value[Math.min(pagadas, cuotasFinales.value.length) - 1]
+      // Asumimos que si hay N pagadas, la cuota N es la última pagada (cronológico)
+      const ultimaPagada = pagadas[pagadas.length - 1]
       payload.monto_pendiente = ultimaPagada ? ultimaPagada.saldo_pendiente : 0
     }
 
     if (payload.fecha_vencimiento === '') payload.fecha_vencimiento = null
     if (payload.tea === '') payload.tea = null
     if (payload.tcea === '') payload.tcea = null
-    await deudasStore.addDeuda(payload, cuotasFinales.value)
+    await deudasStore.addDeuda(payload, finalCuotasGuardar)
     notificationsStore.success('Deuda registrada exitosamente')
     router.push('/')
   } catch (error) {
@@ -376,20 +358,6 @@ const handleSubmit = async () => {
             </div>
           </div>
 
-          <!-- Cuotas Pagadas -->
-          <div class="group relative">
-            <label
-              class="block text-sm font-bold text-slate-700 mb-1 group-focus-within:text-indigo-600 transition-colors">
-              ¿Hasta qué cuota ya pagó?
-            </label>
-            <div class="relative">
-              <input id="deuda-cuotas-pagadas" v-model.number="formData.cuotas_pagadas" type="number" step="1"
-                required min="0" :max="formData.num_cuotas || undefined"
-                class="w-full border border-slate-200 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 p-2.5 text-base bg-white/70 backdrop-blur-sm transition-all hover:bg-white"
-                placeholder="0 si es nueva" />
-            </div>
-          </div>
-
           <!-- Fecha de Inicio -->
           <div class="group">
             <label
@@ -540,7 +508,8 @@ const handleSubmit = async () => {
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
-              <span>El cronograma será <strong>aproximado</strong> usando la TCEA. Para mayor exactitud, ingresa la TEA.</span>
+              <span>El cronograma será <strong>aproximado</strong> usando la TCEA. Para mayor exactitud, ingresa la
+                TEA.</span>
             </div>
           </transition>
         </div>
@@ -558,21 +527,22 @@ const handleSubmit = async () => {
 
       <hr class="border-slate-100" />
 
-      <!-- ── Vista Previa Cronograma ── -->
+      <!-- ── Cronograma ── -->
       <div class="relative z-10">
-        <div class="mb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="mb-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h3 class="text-lg font-bold text-slate-900">Tu Plan de Pagos</h3>
-            <p class="text-xs text-slate-600 mt-0.5">Revisa cómo quedarán tus cuotas antes de guardar.</p>
+            <p class="text-xs text-slate-600 mt-0.5">Ingresa o ajusta las cuotas según tu contrato. Marca las que ya
+              pagaste.</p>
           </div>
           <div class="flex bg-slate-100 p-1.5 rounded-xl shrink-0 gap-1 border border-slate-200">
             <button type="button" @click="modoIngreso = 'automatico'"
-              class="px-4 py-2 text-base font-bold rounded-lg transition-colors"
+              class="px-4 py-2 text-sm font-bold rounded-lg transition-colors"
               :class="modoIngreso === 'automatico' ? 'bg-white text-indigo-700 shadow-md border border-slate-200' : 'text-slate-600 hover:text-slate-800'">
               Calculado por la App
             </button>
             <button type="button" @click="modoIngreso = 'manual'"
-              class="px-4 py-2 text-base font-bold rounded-lg transition-colors"
+              class="px-4 py-2 text-sm font-bold rounded-lg transition-colors"
               :class="modoIngreso === 'manual' ? 'bg-white text-indigo-700 shadow-md border border-slate-200' : 'text-slate-600 hover:text-slate-800'">
               Copiar de mi Banco
             </button>
@@ -581,22 +551,20 @@ const handleSubmit = async () => {
 
         <!-- Aviso cuando no hay datos suficientes -->
         <div v-if="!previewListo"
-          class="flex items-center gap-4 text-lg p-4 bg-slate-50 border border-dashed border-slate-200 rounded-2xl text-sm text-slate-400">
+          class="flex items-center gap-4 p-4 bg-slate-50 border border-dashed border-slate-200 rounded-2xl text-sm text-slate-400">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 text-slate-300" fill="none"
             viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
               d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <span v-if="modoIngreso === 'automatico'">Completa monto, tasa, nro. cuotas y fecha de inicio para ver la
-            proyección.</span>
-          <span v-else>Completa nro. cuotas para generar la tabla y llenarla manualmente.</span>
+          <span>Completa el número de cuotas y la fecha de inicio para generar la tabla.</span>
         </div>
 
-        <!-- Tabla siempre visible cuando hay datos -->
-        <div v-if="previewListo">
-          <CronogramaTable v-if="modoIngreso === 'automatico'" :cuotas="cronogramaPreview" :moneda="formData.moneda" :es-aproximado="soloCon_TCEA" />
-          <EditableCronogramaTable v-else v-model="cuotasManuales" :moneda="formData.moneda" />
-        </div>
+        <!-- Tabla editable -->
+        <EditableCronogramaTable v-if="previewListo" :model-value="cuotasFinales"
+          @update:model-value="val => { if (modoIngreso === 'manual') cuotasManuales = val }"
+          @toggle="togglePagada"
+          :readonly="modoIngreso === 'automatico'" :moneda="formData.moneda" />
       </div>
 
       <!-- ── Botones ── -->
