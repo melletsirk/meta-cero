@@ -77,7 +77,7 @@ const formatMonto = (monto, moneda) => formatearMoneda(monto, moneda || 'PEN')
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 stagger-1">
       <div>
         <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Hola, <span class="text-indigo-600">{{
-          authStore.user?.email.split('@')[0] }}</span> 👋</h1>
+          authStore.user?.user_metadata?.full_name || authStore.user?.email?.split('@')[0] }}</span> 👋</h1>
         <p class="text-slate-500 mt-1 font-medium">Aquí está el resumen de tus deudas activas.</p>
       </div>
       <button @click="goNuevaDeuda"

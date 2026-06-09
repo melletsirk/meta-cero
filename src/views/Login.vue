@@ -11,13 +11,14 @@ const notificationsStore = useNotificationsStore()
 const isRegistering = ref(false)
 const email = ref('')
 const password = ref('')
+const nombre = ref('')
 const loading = ref(false)
 
 const handleSubmit = async () => {
   loading.value = true
   try {
     if (isRegistering.value) {
-      const data = await authStore.signUp(email.value, password.value)
+      const data = await authStore.signUp(email.value, password.value, nombre.value)
       if (data.user && data.user.identities && data.user.identities.length === 0) {
          notificationsStore.error('Este correo ya está registrado.')
       } else if (data.session) {
@@ -62,6 +63,13 @@ const handleSubmit = async () => {
       </div>
 
       <form @submit.prevent="handleSubmit" class="space-y-6">
+        <transition name="fade">
+          <div v-if="isRegistering" class="group">
+            <label for="nombre" class="block text-sm font-semibold text-slate-700 mb-2 group-focus-within:text-indigo-600 transition-colors">Nombre completo</label>
+            <input id="nombre" v-model="nombre" type="text" :required="isRegistering" class="block w-full border-slate-200 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-base p-3.5 bg-white/70 backdrop-blur-sm transition-all hover:bg-white" placeholder="Juan Pérez" />
+          </div>
+        </transition>
+
         <div class="group">
           <label for="email" class="block text-sm font-semibold text-slate-700 mb-2 group-focus-within:text-indigo-600 transition-colors">Correo electrónico</label>
           <input id="email" v-model="email" type="email" required class="block w-full border-slate-200 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-base p-3.5 bg-white/70 backdrop-blur-sm transition-all hover:bg-white" placeholder="tu@correo.com" />
