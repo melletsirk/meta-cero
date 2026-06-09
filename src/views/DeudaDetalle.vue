@@ -39,7 +39,6 @@ const teaBadgeClass = computed(() => {
 })
 
 const cuotasPagadas = computed(() => cuotas.value.filter(c => c.pagada).length)
-const esAproximado = computed(() => cuotas.value.some(c => c.modo === 'aproximado'))
 
 onMounted(async () => {
   // Si no hay deudas cargadas, fetchearlas primero

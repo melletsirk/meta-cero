@@ -262,20 +262,4 @@ function avanzarFecha(fecha, frecuencia, dias) {
   return d
 }
 
-// ---------------------------------------------------------------------------
-// ESTRATEGIAS DE PAGO
-// ---------------------------------------------------------------------------
 
-/**
- * Estrategia Bola de Nieve: ordena por menor saldo pendiente.
- */
-export function estrategiaBolaDeNieve(deudas) {
-  return [...deudas].sort((a, b) => a.monto_pendiente - b.monto_pendiente)
-}
-
-/**
- * Estrategia Avalancha: ordena por mayor tasa de interés (TEA o TCEA).
- */
-export function estrategiaAvalancha(deudas) {
-  return [...deudas].sort((a, b) => (b.tea || b.tcea || 0) - (a.tea || a.tcea || 0))
-}

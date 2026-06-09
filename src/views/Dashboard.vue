@@ -116,7 +116,8 @@ const formatMonto = (monto, moneda) => formatearMoneda(monto, moneda || 'PEN')
         <h3 class="text-base font-bold text-slate-600 mb-2 leading-tight">Tu próximo pago</h3>
         <template v-if="deudasStore.proximosVencimientos.length > 0">
           <p class="text-2xl font-bold text-slate-900">Día {{ deudasStore.proximosVencimientos[0].dia_vencimiento }}</p>
-          <p class="text-base font-medium text-slate-500 mt-1 truncate">{{ deudasStore.proximosVencimientos[0].nombre }}</p>
+          <p class="text-base font-medium text-slate-500 mt-1 truncate">{{ deudasStore.proximosVencimientos[0].nombre }}
+          </p>
         </template>
         <template v-else>
           <p class="text-2xl font-bold text-slate-900">Al día 🎉</p>
