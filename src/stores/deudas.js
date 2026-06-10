@@ -170,6 +170,58 @@ export const useDeudasStore = defineStore('deudas', () => {
     }
   }
 
+  async function updateDeudaYCuotas(id, deudaUpdates, cuotas = []) {
+    loading.value = true
+    try {
+      // 1. Update deuda
+      const deudaData = await updateDeuda(id, deudaUpdates)
+
+      // 2. Delete existing cuotas
+      const { error: deleteError } = await supabase
+        .from('cuotas')
+        .delete()
+        .eq('deuda_id', id)
+
+      if (deleteError) throw deleteError
+
+      // 3. Insert new cuotas
+      if (cuotas.length > 0) {
+        const cuotasPayload = cuotas.map(c => ({
+          deuda_id: id,
+          numero: c.numero,
+          fecha: c.fecha || null,
+          capital: c.capital,
+          interes: c.interes,
+          total: c.total,
+          saldo_pendiente: c.saldo_pendiente,
+          pagada: c.pagada || false,
+          modo: c.modo || 'calculado',
+        }))
+
+        const { error: cuotasError } = await supabase
+          .from('cuotas')
+          .insert(cuotasPayload)
+
+        if (cuotasError) throw cuotasError
+
+        cuotasPorDeuda.value[id] = cuotas.map((c) => ({
+          ...c,
+          id: null,
+          pagada: c.pagada || false,
+        }))
+      } else {
+        cuotasPorDeuda.value[id] = []
+      }
+
+      return deudaData
+    } catch (error) {
+      console.error('Error updating deuda y cuotas:', error)
+      throw error
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function deleteDeuda(id) {
     try {
       const { error } = await supabase
@@ -275,6 +327,7 @@ export const useDeudasStore = defineStore('deudas', () => {
     fetchDeudas,
     addDeuda,
     updateDeuda,
+    updateDeudaYCuotas,
     deleteDeuda,
     fetchCuotas,
     toggleCuotaPagada,

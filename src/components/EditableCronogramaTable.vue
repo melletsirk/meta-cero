@@ -135,47 +135,47 @@ const handlePagoClick = (cuota, idx) => {
               <!-- Fecha -->
               <td class="px-3 py-2">
                 <template v-if="readonly">
-                  <span class="text-xs font-bold"
+                  <span class="text-lg font-bold"
                     :class="cuota.pagada ? 'text-slate-500 line-through' : 'text-slate-700'">
                     {{ fmtFecha(cuota.fecha) }}
                   </span>
                 </template>
                 <template v-else>
                   <input type="date" :value="cuota.fecha" @input="e => updateCuota(idx, 'fecha', e.target.value)"
-                    class="w-full border-0 bg-transparent text-xs text-slate-700 p-1 focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded" />
+                    class="w-full border-0 bg-transparent text-lg text-slate-700 p-1 focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded" />
                 </template>
               </td>
               <!-- Monto de cuota -->
               <td class="px-3 py-2 text-right">
                 <template v-if="readonly">
-                  <span class="text-xs font-bold"
+                  <span class="text-lg font-bold"
                     :class="cuota.pagada ? 'text-slate-400 line-through' : 'text-slate-900'">
                     {{ fmt(cuota.total) }}
                   </span>
                 </template>
                 <template v-else>
                   <div class="relative flex items-center justify-end">
-                    <span class="text-slate-400 text-xs font-bold mr-1">{{ prefijo }}</span>
+                    <span class="text-slate-400 text-lg font-bold mr-1">{{ prefijo }}</span>
                     <input type="number" step="0.01" :value="cuota.total"
                       @input="e => updateCuota(idx, 'total', Number(e.target.value))"
-                      class="w-24 text-right border-0 bg-transparent text-xs font-bold text-slate-900 p-1 focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded" />
+                      class="w-24 text-right border-0 bg-transparent text-lg font-bold text-slate-900 p-1 focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded" />
                   </div>
                 </template>
               </td>
               <!-- Saldo pendiente -->
               <td class="px-3 py-2 text-right">
                 <template v-if="readonly">
-                  <span class="text-xs font-bold"
+                  <span class="text-lg font-bold"
                     :class="cuota.pagada ? 'text-slate-400 line-through' : 'text-slate-600'">
                     {{ fmt(cuota.saldo_pendiente) }}
                   </span>
                 </template>
                 <template v-else>
                   <div class="relative flex items-center justify-end">
-                    <span class="text-slate-400 text-xs font-bold mr-1">{{ prefijo }}</span>
+                    <span class="text-slate-400 text-lg font-bold mr-1">{{ prefijo }}</span>
                     <input type="number" step="0.01" :value="cuota.saldo_pendiente"
                       @input="e => updateCuota(idx, 'saldo_pendiente', Number(e.target.value))"
-                      class="w-24 text-right border-0 bg-transparent text-xs p-1 focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded"
+                      class="w-24 text-right border-0 bg-transparent text-lg p-1 focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded"
                       :class="Number(cuota.saldo_pendiente) === 0 ? 'text-emerald-600' : 'text-slate-600'" />
                   </div>
                 </template>

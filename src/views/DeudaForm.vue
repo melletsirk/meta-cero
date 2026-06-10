@@ -1,15 +1,20 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useDeudasStore } from '../stores/deudas'
 import { useNotificationsStore } from '../stores/notifications'
 import { calcularTasaPeriodica, alertaTEA, simboloMoneda, FRECUENCIAS, generarCronogramaFrances } from '../lib/finanzas'
 import EditableCronogramaTable from '../components/EditableCronogramaTable.vue'
-import { watch } from 'vue'
+import { watch, onMounted } from 'vue'
 
 const router = useRouter()
+const route = useRoute()
 const deudasStore = useDeudasStore()
 const notificationsStore = useNotificationsStore()
+
+const editId = route.params.id
+const isEditMode = computed(() => !!editId)
+const isInitializing = ref(false)
 
 
 // ---------------------------------------------------------------------------
@@ -128,6 +133,7 @@ watch(
     formData.value.redondear_cuota
   ],
   () => {
+    if (isInitializing.value) return
     const { monto_original, tea, tcea, num_cuotas, fecha_inicio, frecuencia_pago } = formData.value
     const tasaUsada = tea || tcea
     if (!monto_original || !tasaUsada || (!num_cuotas && frecuencia_pago !== 'cuota_unica') || !fecha_inicio) {
@@ -156,6 +162,31 @@ const cuotasFinales = computed(() => cuotasManuales.value)
 
 const previewListo = computed(() => cuotasFinales.value.length > 0)
 
+onMounted(async () => {
+  if (isEditMode.value) {
+    loading.value = true
+    isInitializing.value = true
+    
+    if (deudasStore.deudas.length === 0) {
+      await deudasStore.fetchDeudas()
+    }
+    const deuda = deudasStore.deudas.find(d => d.id === editId)
+    if (deuda) {
+      Object.assign(formData.value, deuda)
+      const data = await deudasStore.fetchCuotas(editId)
+      cuotasManuales.value = data
+    } else {
+      notificationsStore.error('Deuda no encontrada')
+      router.push('/')
+    }
+    
+    setTimeout(() => {
+      isInitializing.value = false
+    }, 100)
+    loading.value = false
+  }
+})
+
 // ---------------------------------------------------------------------------
 // Cálculo automático de tasa mensual al cambiar TEA
 // ---------------------------------------------------------------------------
@@ -176,7 +207,7 @@ const handleSubmit = async () => {
     if (formData.value.tea && !formData.value.tasa_mensual) {
       calcularTasaMensualDesdeTEA()
     }
-    const { base_calculo, redondear_cuota, cuotas_pagadas, ...payloadLimpio } = formData.value
+    const { id, user_id, created_at, updated_at, base_calculo, redondear_cuota, cuotas_pagadas, cuotas, ...payloadLimpio } = formData.value
     const payload = { ...payloadLimpio }
 
     // Asegurar que las cuotas a guardar tengan la marca de 'pagada' correcta
@@ -198,9 +229,16 @@ const handleSubmit = async () => {
     if (payload.fecha_vencimiento === '') payload.fecha_vencimiento = null
     if (payload.tea === '') payload.tea = null
     if (payload.tcea === '') payload.tcea = null
-    await deudasStore.addDeuda(payload, finalCuotasGuardar)
-    notificationsStore.success('Deuda registrada exitosamente')
-    router.push('/')
+
+    if (isEditMode.value) {
+      await deudasStore.updateDeudaYCuotas(editId, payload, finalCuotasGuardar)
+      notificationsStore.success('Deuda actualizada exitosamente')
+      router.push(`/deudas/${editId}`)
+    } else {
+      await deudasStore.addDeuda(payload, finalCuotasGuardar)
+      notificationsStore.success('Deuda registrada exitosamente')
+      router.push('/')
+    }
   } catch (error) {
     notificationsStore.error('Error al guardar la deuda: ' + error.message)
   } finally {
@@ -221,8 +259,10 @@ const handleSubmit = async () => {
         </svg>
       </button>
       <div>
-        <h1 class="text-4xl font-extrabold text-slate-900 tracking-tight">Añadir Préstamo</h1>
-        <p class="text-lg text-slate-600 mt-1 font-medium">Llene los datos básicos de su deuda.</p>
+          <h2 class="text-2xl font-extrabold text-slate-900 tracking-tight">
+            {{ isEditMode ? 'Editar Deuda' : 'Datos del Préstamo' }}
+          </h2>
+          <p class="text-lg text-slate-600 mt-1 font-medium">Llene los datos básicos de su deuda.</p>
       </div>
     </div>
 
@@ -573,7 +613,7 @@ const handleSubmit = async () => {
                 d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
                 clip-rule="evenodd" />
             </svg>
-            Guardar Deuda
+            {{ isEditMode ? 'Guardar Cambios' : 'Guardar Deuda' }}
           </template>
         </button>
       </div>

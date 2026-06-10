@@ -27,6 +27,12 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/deudas/:id/editar',
+    name: 'EditarDeuda',
+    component: DeudaForm,
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/deudas/:id',
     name: 'DeudaDetalle',
     component: DeudaDetalle,
