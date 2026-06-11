@@ -5,15 +5,59 @@ import { useAuthStore } from '../stores/auth'
 import { useDeudasStore } from '../stores/deudas'
 import { useNotificationsStore } from '../stores/notifications'
 import { formatearMoneda, alertaTEA } from '../lib/finanzas'
+import { registerAndSubscribePush } from '../lib/push'
 
 const authStore = useAuthStore()
 const deudasStore = useDeudasStore()
 const notificationsStore = useNotificationsStore()
 const router = useRouter()
 
-onMounted(() => {
-  deudasStore.fetchDeudas()
+onMounted(async () => {
+  await deudasStore.fetchDeudas()
+  checkVencimientosHoy()
 })
+
+const checkVencimientosHoy = () => {
+  const hoyStr = new Date().toISOString().split('T')[0]
+  let cuotasDeHoy = 0
+  const deudasVencenHoy = []
+
+  deudasStore.deudas.forEach(deuda => {
+    if (deuda.estado !== 'activa') return
+    const cuotas = deudasStore.cuotasPorDeuda[deuda.id] || []
+    const venceHoy = cuotas.some(c => c.fecha === hoyStr && !c.pagada)
+    if (venceHoy) {
+      cuotasDeHoy++
+      deudasVencenHoy.push(deuda.nombre)
+    }
+  })
+
+  // Siempre pedimos permiso para suscribir al usuario a Push Notifications (Offline)
+  if ('Notification' in window) {
+    if (Notification.permission === 'granted') {
+      registerAndSubscribePush()
+    } else if (Notification.permission !== 'denied') {
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          registerAndSubscribePush()
+        }
+      })
+    }
+  }
+
+  // Notificación local e in-app solo si hay cuotas hoy
+  if (cuotasDeHoy > 0) {
+    const mensaje = `Tienes ${cuotasDeHoy} cuota(s) que vencen HOY: ${deudasVencenHoy.join(', ')}`
+    
+    // 1. Notificación en la interfaz (Toast)
+    notificationsStore.info(`📅 ¡Aviso! ${mensaje}`, 12000)
+
+    // 2. Notificación Push Nativa del Sistema Operativo
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('Meta Cero - Recordatorio', { body: mensaje })
+    }
+  }
+}
 
 const goNuevaDeuda = () => {
   router.push('/deudas/nueva')
