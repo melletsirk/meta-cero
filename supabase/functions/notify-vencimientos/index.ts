@@ -1,14 +1,14 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { sendNotification } from "npm:web-push-neo@latest";
+import webpush from "npm:web-push@3.6.4";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
-const vapidDetails = {
-  subject: "mailto:soporte@meta-cero.com",
-  publicKey: "BKaK8L3Kq6oQuuJGZBgb9vfXa10AKIraOFf3OQLgV8YK2x69tFYcXrxRZsxbM1OaUPW291aD1hDXaqyUvhGkhQY",
-  privateKey: "ZaxXYM-4jv-ecVCkn8xvBe1_qQ1lieIuYqR-7R3vs1g"
-};
+webpush.setVapidDetails(
+  "mailto:soporte@meta-cero.com",
+  "BKaK8L3Kq6oQuuJGZBgb9vfXa10AKIraOFf3OQLgV8YK2x69tFYcXrxRZsxbM1OaUPW291aD1hDXaqyUvhGkhQY",
+  "ZaxXYM-4jv-ecVCkn8xvBe1_qQ1lieIuYqR-7R3vs1g"
+);
 
 Deno.serve(async (req) => {
   try {
@@ -66,11 +66,7 @@ Deno.serve(async (req) => {
           };
 
           promesasEnvio.push(
-            sendNotification({
-              subscription: pushSubscription,
-              payload: payload,
-              vapidDetails: vapidDetails
-            }).catch(async (err: any) => {
+            webpush.sendNotification(pushSubscription, payload).catch(async (err: any) => {
               if (err.statusCode === 410) {
                 await supabaseAdmin
                   .from("push_subscriptions")
