@@ -22,4 +22,5 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-supabase_schema.sql
+# SQL files (schema, migrations — apply directly in Supabase dashboard)
+*.sql
