@@ -78,12 +78,21 @@ export const useDeudasStore = defineStore('deudas', () => {
         .order('created_at', { ascending: false })
 
       if (error) throw error
-      deudas.value = data || []
-      
-      // Llenamos la caché de cuotas
-      ;(data || []).forEach(d => {
+
+      // Normalizar backward-compat: si la migración aún no corrió en la DB,
+      // los campos tienen los nombres viejos. Los mapeamos al nombre nuevo.
+      const normalized = (data || []).map(d => ({
+        ...d,
+        saldo_capital: d.saldo_capital ?? d.monto_pendiente ?? 0,
+        cuotas: (d.cuotas || []).map(normalizeCuota)
+      }))
+
+      deudas.value = normalized
+
+      // Llenar caché de cuotas
+      normalized.forEach(d => {
         if (d.cuotas) {
-          cuotasPorDeuda.value[d.id] = d.cuotas.sort((a,b) => a.numero - b.numero)
+          cuotasPorDeuda.value[d.id] = [...d.cuotas].sort((a, b) => a.numero - b.numero)
         }
       })
     } catch (error) {
@@ -120,8 +129,10 @@ export const useDeudasStore = defineStore('deudas', () => {
           capital: c.capital,
           interes: c.interes,
           total: c.total,
-          capital_pendiente: c.capital_pendiente,
+          // Fallback: si vienen de la DB pre-migración, usan saldo_pendiente
+          capital_pendiente: c.capital_pendiente ?? c.saldo_pendiente ?? 0,
           pagada: c.pagada || false,
+          fecha_pago: c.fecha_pago || null,
           modo: c.modo || 'calculado',
         }))
 
@@ -173,6 +184,14 @@ export const useDeudasStore = defineStore('deudas', () => {
   async function updateDeudaYCuotas(id, deudaUpdates, cuotas = []) {
     loading.value = true
     try {
+      // 0. Guardar BACKUP de cuotas existentes antes de tocar nada.
+      //    Si el INSERT falla, las restauramos para evitar pérdida de datos.
+      const { data: backupCuotas } = await supabase
+        .from('cuotas')
+        .select('*')
+        .eq('deuda_id', id)
+        .order('numero', { ascending: true })
+
       // 1. Update deuda
       const deudaData = await updateDeuda(id, deudaUpdates)
 
@@ -193,8 +212,10 @@ export const useDeudasStore = defineStore('deudas', () => {
           capital: c.capital,
           interes: c.interes,
           total: c.total,
-          capital_pendiente: c.capital_pendiente,
+          // Fallback: si vienen de la DB pre-migración usan saldo_pendiente
+          capital_pendiente: c.capital_pendiente ?? c.saldo_pendiente ?? 0,
           pagada: c.pagada || false,
+          fecha_pago: c.fecha_pago || null,
           modo: c.modo || 'calculado',
         }))
 
@@ -202,7 +223,19 @@ export const useDeudasStore = defineStore('deudas', () => {
           .from('cuotas')
           .insert(cuotasPayload)
 
-        if (cuotasError) throw cuotasError
+        if (cuotasError) {
+          // ROLLBACK: restaurar el backup de cuotas para no perder datos
+          console.error('Insert cuotas falló, restaurando backup...', cuotasError)
+          if (backupCuotas && backupCuotas.length > 0) {
+            const restorePayload = backupCuotas.map(
+              ({ id: _id, created_at: _ca, updated_at: _ua, ...rest }) => rest
+            )
+            await supabase.from('cuotas').insert(restorePayload).catch(e =>
+              console.error('No se pudo restaurar el backup de cuotas:', e)
+            )
+          }
+          throw cuotasError
+        }
 
         cuotasPorDeuda.value[id] = cuotas.map((c) => ({
           ...c,
@@ -255,8 +288,10 @@ export const useDeudasStore = defineStore('deudas', () => {
         .order('numero', { ascending: true })
 
       if (error) throw error
-      cuotasPorDeuda.value[deudaId] = data
-      return data
+      // Normalizar backward-compat (antes de migrar, el campo era saldo_pendiente)
+      const normalized = (data || []).map(normalizeCuota)
+      cuotasPorDeuda.value[deudaId] = normalized
+      return normalized
     } catch (error) {
       console.error('Error fetching cuotas:', error)
       return []
@@ -298,7 +333,7 @@ export const useDeudasStore = defineStore('deudas', () => {
         if (idxPrimera === 0) {
           nuevoSaldo = Number(deuda.monto_original)
         } else {
-          nuevoSaldo = Number(ordenadas[idxPrimera - 1].capital_pendiente)
+          nuevoSaldo = Number(ordenadas[idxPrimera - 1].capital_pendiente ?? ordenadas[idxPrimera - 1].saldo_pendiente ?? 0)
         }
       }
 
