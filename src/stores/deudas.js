@@ -21,7 +21,7 @@ export const useDeudasStore = defineStore('deudas', () => {
       const pendientes = cuotas.filter(c => !c.pagada)
       
       if (cuotas.length === 0) {
-        return acc + Number(deuda.monto_pendiente || 0)
+        return acc + Number(deuda.saldo_capital || 0)
       }
       
       const sumaConIntereses = pendientes.reduce((sum, c) => sum + Number(c.total || 0), 0)
@@ -120,7 +120,7 @@ export const useDeudasStore = defineStore('deudas', () => {
           capital: c.capital,
           interes: c.interes,
           total: c.total,
-          saldo_pendiente: c.saldo_pendiente,
+          capital_pendiente: c.capital_pendiente,
           pagada: c.pagada || false,
           modo: c.modo || 'calculado',
         }))
@@ -193,7 +193,7 @@ export const useDeudasStore = defineStore('deudas', () => {
           capital: c.capital,
           interes: c.interes,
           total: c.total,
-          saldo_pendiente: c.saldo_pendiente,
+          capital_pendiente: c.capital_pendiente,
           pagada: c.pagada || false,
           modo: c.modo || 'calculado',
         }))
@@ -265,14 +265,15 @@ export const useDeudasStore = defineStore('deudas', () => {
 
   /**
    * Marca o desmarca una cuota como pagada.
-   * También actualiza monto_pendiente de la deuda padre.
+   * También actualiza saldo_capital de la deuda padre y registra fecha_pago.
    */
   async function toggleCuotaPagada(cuota, deuda) {
     const nuevaPagada = !cuota.pagada
+    const fechaPago = nuevaPagada ? new Date().toISOString().split('T')[0] : null
     try {
       const { error: cuotaError } = await supabase
         .from('cuotas')
-        .update({ pagada: nuevaPagada })
+        .update({ pagada: nuevaPagada, fecha_pago: fechaPago })
         .eq('id', cuota.id)
 
       if (cuotaError) throw cuotaError
@@ -281,33 +282,27 @@ export const useDeudasStore = defineStore('deudas', () => {
       const cuotas = cuotasPorDeuda.value[deuda.id] || []
       const idx = cuotas.findIndex(c => c.id === cuota.id)
       if (idx !== -1) {
-        cuotas[idx] = { ...cuotas[idx], pagada: nuevaPagada }
+        cuotas[idx] = { ...cuotas[idx], pagada: nuevaPagada, fecha_pago: fechaPago }
         cuotasPorDeuda.value[deuda.id] = [...cuotas]
       }
 
-      // Recalcular monto_pendiente = saldo_pendiente de la primera cuota sin pagar
-      // Eso equivale al capital restante que aún debe amortizarse.
+      // Recalcular saldo_capital = capital_pendiente de la última cuota pagada
       const cuotasActualizadas = cuotasPorDeuda.value[deuda.id] || []
       const ordenadas = [...cuotasActualizadas].sort((a, b) => a.numero - b.numero)
       const primeraPendiente = ordenadas.find(c => !c.pagada)
-      // Si hay cuotas pendientes, el saldo es el saldo_pendiente de la cuota ANTERIOR a la primera pendiente
-      // (o el monto original si ninguna fue pagada aún)
       let nuevoSaldo
       if (!primeraPendiente) {
-        // Todas pagadas
         nuevoSaldo = 0
       } else {
         const idxPrimera = ordenadas.findIndex(c => c.id === primeraPendiente.id)
         if (idxPrimera === 0) {
-          // Ninguna pagada — restaurar monto original
           nuevoSaldo = Number(deuda.monto_original)
         } else {
-          // El saldo correcto es el saldo_pendiente de la última cuota pagada
-          nuevoSaldo = Number(ordenadas[idxPrimera - 1].saldo_pendiente)
+          nuevoSaldo = Number(ordenadas[idxPrimera - 1].capital_pendiente)
         }
       }
 
-      await updateDeuda(deuda.id, { monto_pendiente: nuevoSaldo })
+      await updateDeuda(deuda.id, { saldo_capital: nuevoSaldo })
 
       return true
     } catch (error) {

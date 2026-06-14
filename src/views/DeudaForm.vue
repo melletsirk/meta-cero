@@ -217,13 +217,13 @@ const handleSubmit = async () => {
       pagada: i < pagadas
     }))
 
-    // Calcular monto_pendiente
+    // Calcular saldo_capital inicial (capital amortizado restante)
     if (pagadas === 0 || finalCuotasGuardar.length === 0) {
-      payload.monto_pendiente = payload.monto_original
+      payload.saldo_capital = payload.monto_original
     } else {
-      // El saldo pendiente será el saldo de la última cuota que se marcó como pagada
+      // El saldo de capital es el capital_pendiente de la última cuota pagada
       const ultimaPagada = finalCuotasGuardar[Math.min(pagadas, finalCuotasGuardar.length) - 1]
-      payload.monto_pendiente = ultimaPagada ? ultimaPagada.saldo_pendiente : 0
+      payload.saldo_capital = ultimaPagada ? ultimaPagada.capital_pendiente : 0
     }
 
     if (payload.fecha_vencimiento === '') payload.fecha_vencimiento = null

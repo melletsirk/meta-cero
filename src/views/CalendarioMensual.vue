@@ -127,12 +127,14 @@ async function togglePagada(cuota) {
   toggling.value[cuota.id] = true
   try {
     const nuevaPagada = !cuota.pagada
+    const fechaPago = nuevaPagada ? new Date().toISOString().split('T')[0] : null
     const { error } = await supabase
       .from('cuotas')
-      .update({ pagada: nuevaPagada })
+      .update({ pagada: nuevaPagada, fecha_pago: fechaPago })
       .eq('id', cuota.id)
     if (error) throw error
     cuota.pagada = nuevaPagada
+    cuota.fecha_pago = fechaPago
   } catch (e) {
     console.error(e)
   } finally {

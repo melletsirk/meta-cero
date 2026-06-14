@@ -210,7 +210,7 @@ export function generarCronogramaFrances(monto, tea, numCuotas, fechaInicio, fre
       capital: Number(capital.toFixed(2)),
       interes: Number(interes.toFixed(2)),
       total: Number(cuotaPeriodo.toFixed(2)),
-      saldo_pendiente: Number(Math.max(0, saldo).toFixed(2)),
+      capital_pendiente: Number(Math.max(0, saldo).toFixed(2)),
       pagada: false,
       modo: esAproximado ? 'aproximado' : 'calculado',
     })
@@ -241,7 +241,7 @@ function generarCuotaUnica(monto, tea, fechaInicio, esAproximado = false) {
     capital: Number(monto.toFixed(2)),
     interes: Number(interes.toFixed(2)),
     total: Number(total.toFixed(2)),
-    saldo_pendiente: 0,
+    capital_pendiente: 0,
     pagada: false,
     modo: esAproximado ? 'aproximado' : 'calculado',
   }]
