@@ -40,6 +40,18 @@ const teaBadgeClass = computed(() => {
 
 const cuotasPagadas = computed(() => cuotas.value.filter(c => c.pagada).length)
 
+/**
+ * Monto pendiente real = suma del campo `total` (capital + interés)
+ * de todas las cuotas no pagadas.
+ * Fallback a monto_pendiente del DB si aún no cargaron las cuotas.
+ */
+const montoPendienteConIntereses = computed(() => {
+  if (cuotas.value.length === 0) return Number(deuda.value?.saldo_capital || 0)
+  return cuotas.value
+    .filter(c => !c.pagada)
+    .reduce((sum, c) => sum + Number(c.total || 0), 0)
+})
+
 onMounted(async () => {
   // Si no hay deudas cargadas, fetchearlas primero
   if (deudasStore.deudas.length === 0) {
@@ -213,8 +225,8 @@ const handleEliminar = async () => {
           <div
             class="absolute -right-3 -top-3 w-16 h-16 bg-red-400 rounded-full mix-blend-multiply filter blur-2xl opacity-10">
           </div>
-          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Pendiente</p>
-          <p class="text-xl font-extrabold text-slate-900 leading-tight">{{ fmt(deuda.monto_pendiente) }}</p>
+          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Pendiente c/ intereses</p>
+          <p class="text-xl font-extrabold text-slate-900 leading-tight">{{ fmt(montoPendienteConIntereses) }}</p>
         </div>
         <div class="glass rounded-2xl border border-white/60 shadow-sm p-4 relative overflow-hidden">
           <div

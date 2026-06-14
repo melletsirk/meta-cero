@@ -113,6 +113,19 @@ const frecuenciaLabel = (freq) => {
 
 /** Formatea monto usando la moneda guardada por deuda */
 const formatMonto = (monto, moneda) => formatearMoneda(monto, moneda || 'PEN')
+
+/**
+ * Retorna el monto pendiente real (capital + intereses) de una deuda
+ * sumando el `total` de todas sus cuotas no pagadas.
+ * Si no hay cuotas registradas, cae al monto_pendiente del DB como fallback.
+ */
+const montoPendienteConIntereses = (deuda) => {
+  const cuotas = deudasStore.cuotasPorDeuda[deuda.id] || []
+  if (cuotas.length === 0) return Number(deuda.saldo_capital || 0)
+  return cuotas
+    .filter(c => !c.pagada)
+    .reduce((sum, c) => sum + Number(c.total || 0), 0)
+}
 </script>
 
 <template>
@@ -255,7 +268,7 @@ const formatMonto = (monto, moneda) => formatearMoneda(monto, moneda || 'PEN')
           <div
             class="mt-4 sm:mt-0 text-left sm:text-right w-full sm:w-auto flex flex-col sm:items-end justify-between border-t border-slate-100 sm:border-0 pt-3 sm:pt-0 gap-3 sm:gap-2">
             <div class="flex sm:flex-col justify-between items-center sm:items-end w-full">
-              <p class="font-extrabold text-lg text-slate-900">{{ formatMonto(deuda.monto_pendiente, deuda.moneda) }}
+              <p class="font-extrabold text-lg text-slate-900">{{ formatMonto(montoPendienteConIntereses(deuda), deuda.moneda) }}
               </p>
               <span
                 class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider mt-0 sm:mt-1"
