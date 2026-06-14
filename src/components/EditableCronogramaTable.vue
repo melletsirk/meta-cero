@@ -39,6 +39,19 @@ const totales = computed(() =>
   )
 )
 
+/**
+ * Para cada índice i, el saldo real restante CON intereses =
+ * suma del `total` de todas las cuotas posteriores a i.
+ * Así el usuario ve cuánto le falta pagar en total, no solo capital.
+ */
+const saldosConIntereses = computed(() =>
+  cuotas.value.map((_, idx) =>
+    cuotas.value
+      .slice(idx + 1)
+      .reduce((sum, c) => sum + Number(c.total || 0), 0)
+  )
+)
+
 const aplicarMontoGlobal = () => {
   if (montoFijo.value && montoGlobal.value !== null && montoGlobal.value !== '') {
     const newCuotas = cuotas.value.map(c => ({
@@ -120,7 +133,7 @@ const handlePagoClick = (cuota, idx) => {
               </th>
               <th class="px-4 py-3 text-left text-xs font-extrabold uppercase tracking-wider">Fecha de Vencimiento</th>
               <th class="px-4 py-3 text-right text-xs font-extrabold uppercase tracking-wider">Monto de Cuota</th>
-              <th class="px-4 py-3 text-right text-xs font-extrabold uppercase tracking-wider">Saldo</th>
+              <th class="px-4 py-3 text-right text-xs font-extrabold uppercase tracking-wider">Saldo c/ intereses</th>
               <th class="px-4 py-3 text-center text-xs font-extrabold uppercase tracking-wider rounded-tr-2xl w-20">Pago
               </th>
             </tr>
@@ -162,23 +175,12 @@ const handlePagoClick = (cuota, idx) => {
                   </div>
                 </template>
               </td>
-              <!-- Saldo pendiente -->
+              <!-- Saldo pendiente con intereses (calculado) -->
               <td class="px-3 py-2 text-right">
-                <template v-if="readonly">
-                  <span class="text-lg font-bold"
-                    :class="cuota.pagada ? 'text-slate-400 line-through' : 'text-slate-600'">
-                    {{ fmt(cuota.saldo_pendiente) }}
-                  </span>
-                </template>
-                <template v-else>
-                  <div class="relative flex items-center justify-end">
-                    <span class="text-slate-400 text-lg font-bold mr-1">{{ prefijo }}</span>
-                    <input type="number" step="0.01" :value="cuota.saldo_pendiente"
-                      @input="e => updateCuota(idx, 'saldo_pendiente', Number(e.target.value))"
-                      class="w-24 text-right border-0 bg-transparent text-lg p-1 focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded"
-                      :class="Number(cuota.saldo_pendiente) === 0 ? 'text-emerald-600' : 'text-slate-600'" />
-                  </div>
-                </template>
+                <span class="text-lg font-bold"
+                  :class="cuota.pagada ? 'text-slate-400 line-through' : (saldosConIntereses[idx] === 0 ? 'text-emerald-600' : 'text-slate-600')">
+                  {{ fmt(saldosConIntereses[idx]) }}
+                </span>
               </td>
               <!-- Pago -->
               <td class="px-3 py-2 text-center relative">
