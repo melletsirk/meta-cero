@@ -54,9 +54,9 @@ async function cargarTodasLasCuotas() {
       await deudasStore.fetchDeudas()
     }
 
-    // Traer TODAS las cuotas del usuario
+    // Traer TODAS las cuotas del usuario usando la nueva vista consolidada
     const { data, error } = await supabase
-      .from('cuotas')
+      .from('v_cronograma_consolidado')
       .select('*')
       .order('fecha', { ascending: true })
 
@@ -68,6 +68,8 @@ async function cargarTodasLasCuotas() {
 
     todasLasCuotas.value = (data || []).map(c => ({
       ...c,
+      id: c.cuota_id,
+      numero: c.numero_cuota,
       deuda: deudasMap[c.deuda_id] || null,
     }))
   } catch (e) {
@@ -126,15 +128,9 @@ const toggling = ref({})
 async function togglePagada(cuota) {
   toggling.value[cuota.id] = true
   try {
-    const nuevaPagada = !cuota.pagada
-    const fechaPago = nuevaPagada ? new Date().toISOString().split('T')[0] : null
-    const { error } = await supabase
-      .from('cuotas')
-      .update({ pagada: nuevaPagada, fecha_pago: fechaPago })
-      .eq('id', cuota.id)
-    if (error) throw error
-    cuota.pagada = nuevaPagada
-    cuota.fecha_pago = fechaPago
+    await deudasStore.toggleCuotaPagada(cuota, cuota.deuda)
+    // Refrescar las cuotas para asegurar que la vista esté actualizada con el pago
+    await cargarTodasLasCuotas()
   } catch (e) {
     console.error(e)
   } finally {
