@@ -11,14 +11,16 @@ const notificationsStore = useNotificationsStore()
 const isRegistering = ref(false)
 const email = ref('')
 const password = ref('')
-const nombre = ref('')
+const nombres = ref('')
+const apellidos = ref('')
 const loading = ref(false)
 
 const handleSubmit = async () => {
   loading.value = true
   try {
     if (isRegistering.value) {
-      const data = await authStore.signUp(email.value, password.value, nombre.value)
+      const fullName = `${nombres.value.trim()} ${apellidos.value.trim()}`
+      const data = await authStore.signUp(email.value, password.value, fullName)
       if (data.user && data.user.identities && data.user.identities.length === 0) {
          notificationsStore.error('Este correo ya está registrado.')
       } else if (data.session) {
@@ -64,9 +66,15 @@ const handleSubmit = async () => {
 
       <form @submit.prevent="handleSubmit" class="space-y-6">
         <transition name="fade">
-          <div v-if="isRegistering" class="group">
-            <label for="nombre" class="block text-sm font-semibold text-slate-700 mb-2 group-focus-within:text-indigo-600 transition-colors">Nombre completo</label>
-            <input id="nombre" v-model="nombre" type="text" :required="isRegistering" class="block w-full border-slate-200 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-base p-3.5 bg-white/70 backdrop-blur-sm transition-all hover:bg-white" placeholder="Juan Pérez" />
+          <div v-if="isRegistering" class="flex gap-4">
+            <div class="group flex-1">
+              <label for="nombres" class="block text-sm font-semibold text-slate-700 mb-2 group-focus-within:text-indigo-600 transition-colors">Nombres</label>
+              <input id="nombres" v-model="nombres" type="text" :required="isRegistering" class="block w-full border-slate-200 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-base p-3.5 bg-white/70 backdrop-blur-sm transition-all hover:bg-white" placeholder="Juan" />
+            </div>
+            <div class="group flex-1">
+              <label for="apellidos" class="block text-sm font-semibold text-slate-700 mb-2 group-focus-within:text-indigo-600 transition-colors">Apellidos</label>
+              <input id="apellidos" v-model="apellidos" type="text" :required="isRegistering" class="block w-full border-slate-200 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-base p-3.5 bg-white/70 backdrop-blur-sm transition-all hover:bg-white" placeholder="Pérez" />
+            </div>
           </div>
         </transition>
 
