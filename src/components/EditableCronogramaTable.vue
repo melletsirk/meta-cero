@@ -44,13 +44,15 @@ const totales = computed(() =>
  * suma del `total` de todas las cuotas posteriores a i.
  * Así el usuario ve cuánto le falta pagar en total, no solo capital.
  */
-const saldosConIntereses = computed(() =>
-  cuotas.value.map((_, idx) =>
-    cuotas.value
-      .slice(idx + 1)
-      .reduce((sum, c) => sum + Number(c.total || 0), 0)
-  )
-)
+const saldosConIntereses = computed(() => {
+  const result = new Array(cuotas.value.length)
+  let currentSum = 0
+  for (let i = cuotas.value.length - 1; i >= 0; i--) {
+    result[i] = currentSum
+    currentSum += Number(cuotas.value[i].total || 0)
+  }
+  return result
+})
 
 const aplicarMontoGlobal = () => {
   if (montoFijo.value && montoGlobal.value !== null && montoGlobal.value !== '') {

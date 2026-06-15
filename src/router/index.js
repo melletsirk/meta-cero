@@ -1,47 +1,41 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 
-import Dashboard from '../views/Dashboard.vue'
-import Login from '../views/Login.vue'
-import DeudaForm from '../views/DeudaForm.vue'
-import DeudaDetalle from '../views/DeudaDetalle.vue'
-import CalendarioMensual from '../views/CalendarioMensual.vue'
-
 const routes = [
   {
     path: '/',
     name: 'Dashboard',
-    component: Dashboard,
+    component: () => import('../views/Dashboard.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/login',
     name: 'Login',
-    component: Login,
+    component: () => import('../views/Login.vue'),
     meta: { requiresGuest: true }
   },
   {
     path: '/deudas/nueva',
     name: 'NuevaDeuda',
-    component: DeudaForm,
+    component: () => import('../views/DeudaForm.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/deudas/:id/editar',
     name: 'EditarDeuda',
-    component: DeudaForm,
+    component: () => import('../views/DeudaForm.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/deudas/:id',
     name: 'DeudaDetalle',
-    component: DeudaDetalle,
+    component: () => import('../views/DeudaDetalle.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/calendario',
     name: 'CalendarioMensual',
-    component: CalendarioMensual,
+    component: () => import('../views/CalendarioMensual.vue'),
     meta: { requiresAuth: true }
   },
 ]
