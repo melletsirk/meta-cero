@@ -2,12 +2,13 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDeudasStore } from '../stores/deudas'
+import { useNotificationsStore } from '../stores/notifications'
 import { formatearMoneda } from '../lib/finanzas'
-import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
 const deudasStore = useDeudasStore()
+const notificationsStore = useNotificationsStore()
 const authStore = useAuthStore()
 
 // ── Estado ─────────────────────────────────────────
@@ -108,16 +109,49 @@ const totalMesUSD = computed(() =>
 const cuotasPagadas = computed(() => cuotasDelMes.value.filter(c => c.pagada).length)
 const cuotasPendientes = computed(() => cuotasDelMes.value.filter(c => !c.pagada).length)
 
-// ── Toggle pagada ────────────────────────────────────
+// ── Toggle pagada (con regla secuencial) ─────────────────────────────────────
 const toggling = ref({})
 async function togglePagada(cuota) {
+  if (toggling.value[cuota.id]) return
+
+  // ── Regla secuencial ────────────────────────────────────────────────────────
+  // Necesitamos todas las cuotas de esta deuda para verificar el orden.
+  // Las buscamos primero en el caché del store; si no están, las fetcheamos.
+  let cuotasDeuda = deudasStore.cuotasPorDeuda[cuota.deuda_id] || []
+  if (cuotasDeuda.length === 0) {
+    cuotasDeuda = await deudasStore.fetchCuotas(cuota.deuda_id)
+  }
+
+  const ordenadas = [...cuotasDeuda].sort((a, b) => a.numero - b.numero)
+  const proximaIdx = ordenadas.findIndex(c => !c.pagada)
+  const ultimaPagadaIdx = (() => {
+    for (let i = ordenadas.length - 1; i >= 0; i--) {
+      if (ordenadas[i].pagada) return i
+    }
+    return -1
+  })()
+  const idxActual = ordenadas.findIndex(c => c.id === cuota.id)
+
+  if (idxActual !== proximaIdx && idxActual !== ultimaPagadaIdx) {
+    if (!cuota.pagada) {
+      notificationsStore.error('Debes pagar primero la cuota anterior para continuar.')
+    } else {
+      notificationsStore.error('Solo puedes desmarcar la última cuota pagada.')
+    }
+    return
+  }
+  // ────────────────────────────────────────────────────────────────────────────
+
   toggling.value[cuota.id] = true
   try {
     await deudasStore.toggleCuotaPagada(cuota, cuota.deuda)
+    const msg = !cuota.pagada ? '✅ Cuota marcada como pagada' : '↩ Cuota desmarcada'
+    notificationsStore.success(msg)
     // Refrescar totales en background, sin destruir la tabla (modo silencioso)
     await cargarCuotasMes(true)
   } catch (e) {
     console.error(e)
+    notificationsStore.error('Error al actualizar la cuota')
   } finally {
     toggling.value[cuota.id] = false
   }
