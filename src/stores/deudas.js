@@ -62,30 +62,35 @@ export const useDeudasStore = defineStore('deudas', () => {
     }
   }
 
-  // Carga las cuotas de un mes en particular (para el dashboard)
+  // Calcula el total de cuotas pendientes del mes actual consultando v_cronograma_consolidado.
   async function fetchCuotaTotalMes() {
     if (!authStore.user) return
-    const { data } = await supabase.rpc('obtener_total_mes_actual') // Podemos crearlo, o hacer fetch ligero
-    // Para no crear RPC ahora, hacemos un query ligero a v_cronograma_consolidado
     const ahora = new Date()
-    const primerDia = new Date(ahora.getFullYear(), ahora.getMonth(), 1).toISOString().split('T')[0]
-    const ultimoDia = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0).toISOString().split('T')[0]
+    const primerDia = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-01`
+    const ultimoDiaObj = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0)
+    const ultimoDia = `${ultimoDiaObj.getFullYear()}-${String(ultimoDiaObj.getMonth() + 1).padStart(2, '0')}-${String(ultimoDiaObj.getDate()).padStart(2, '0')}`
 
-    const { data: cuotasMes } = await supabase
+    const { data: cuotasMes, error } = await supabase
       .from('v_cronograma_consolidado')
       .select('total')
       .gte('fecha', primerDia)
       .lte('fecha', ultimoDia)
       .eq('pagada', false)
-      
+
+    if (error) {
+      console.error('Error fetching cuota total mes:', error)
+      return
+    }
+
     cuotaTotalMes.value = (cuotasMes || []).reduce((acc, c) => acc + Number(c.total || 0), 0)
   }
 
   // Carga todas las cuotas de un mes específico para el Calendario
   async function fetchCalendario(ano, mes) {
     if (!authStore.user) return []
-    const primerDia = new Date(ano, mes, 1).toISOString().split('T')[0]
-    const ultimoDia = new Date(ano, mes + 1, 0).toISOString().split('T')[0]
+    const primerDia = `${ano}-${String(mes + 1).padStart(2, '0')}-01`
+    const ultimoDiaObj = new Date(ano, mes + 1, 0)
+    const ultimoDia = `${ultimoDiaObj.getFullYear()}-${String(ultimoDiaObj.getMonth() + 1).padStart(2, '0')}-${String(ultimoDiaObj.getDate()).padStart(2, '0')}`
 
     const { data: cuotasMes, error } = await supabase
       .from('v_cronograma_consolidado')
@@ -205,6 +210,8 @@ export const useDeudasStore = defineStore('deudas', () => {
 
         const toInsert = []
         const toUpdate = []
+        const cuotasToPay = []
+        const cuotasToUnpayIds = []
 
         cuotas.forEach(c => {
           const existing = existingMap[c.numero]
@@ -224,9 +231,22 @@ export const useDeudasStore = defineStore('deudas', () => {
           if (existing) {
             payload.id = existing.id
             payload.pago_id = existing.pago_id
+            
+            const wasPaid = !!existing.pago_id
+            const isPaidNow = c.pagada
+            
+            if (isPaidNow && !wasPaid) {
+              cuotasToPay.push({ total: tot, fecha: payload.fecha })
+            } else if (!isPaidNow && wasPaid) {
+              cuotasToUnpayIds.push(existing.pago_id)
+              payload.pago_id = null
+            }
             toUpdate.push(payload)
           } else {
             toInsert.push(payload)
+            if (c.pagada) {
+              cuotasToPay.push({ total: tot, fecha: payload.fecha })
+            }
           }
         })
 
@@ -240,6 +260,21 @@ export const useDeudasStore = defineStore('deudas', () => {
         if (toUpdate.length > 0) {
           const { error: updateError } = await supabase.from('cuotas').upsert(toUpdate)
           if (updateError) throw updateError
+        }
+
+        // Eliminar pagos si el usuario desmarcó cuotas en el formulario
+        if (cuotasToUnpayIds.length > 0) {
+          await supabase.from('pagos').delete().in('id', cuotasToUnpayIds)
+        }
+
+        // Registrar pagos nuevos si el usuario marcó cuotas en el formulario
+        for (const c of cuotasToPay) {
+          await supabase.rpc('registrar_pago', {
+            p_deuda_id: id,
+            p_monto: c.total,
+            p_fecha_pago: c.fecha || new Date().toISOString().split('T')[0],
+            p_tipo: 'cuota_regular'
+          })
         }
 
         // Limpiar cuotas sobrantes si el usuario redujo el número de cuotas (ej. de 12 a 6)
