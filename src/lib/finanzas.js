@@ -153,10 +153,10 @@ export function simboloMoneda(moneda = 'PEN') {
  * @param {boolean}       esAproximado       true si se usa TCEA en lugar de TEA pura
  * @returns {Array}       Array de cuotas
  */
-export function generarCronogramaFrances(monto, tea, numCuotas, fechaInicio, frecuencia = 'mensual', esAproximado = false, base = 365, redondearCuota = false) {
+export function generarCronogramaFrances(monto, tea, numCuotas, fechaInicio, fechaPrimerPago, frecuencia = 'mensual', esAproximado = false, base = 365, redondearCuota = false) {
   // Cuota única: no hay amortización progresiva
   if (frecuencia === 'cuota_unica') {
-    return generarCuotaUnica(monto, tea, fechaInicio, 0, esAproximado)
+    return generarCuotaUnica(monto, tea, fechaInicio, fechaPrimerPago, esAproximado)
   }
 
   const tasaInteres = calcularTasaPeriodica(tea, frecuencia, base)
@@ -181,10 +181,12 @@ export function generarCronogramaFrances(monto, tea, numCuotas, fechaInicio, fre
 
   const cuotas = []
   let saldo = monto
-  let fechaActual = new Date(fechaInicio)
+  let fechaActual = new Date(fechaPrimerPago || fechaInicio)
 
   for (let i = 1; i <= numCuotas; i++) {
-    fechaActual = avanzarFecha(fechaActual, frecuencia, dias)
+    if (i > 1) {
+      fechaActual = avanzarFecha(fechaActual, frecuencia, dias)
+    }
 
     // Truncar interés a 2 decimales (como hacen las cooperativas)
     const interesExacto = saldo * tasaInteres
@@ -204,12 +206,17 @@ export function generarCronogramaFrances(monto, tea, numCuotas, fechaInicio, fre
     saldo -= capital
     if (saldo < 0.005) saldo = 0
 
+    // Asegurar que matemáticamente el total coincida exactamente con capital + interes
+    const capitalFixed = Number(capital.toFixed(2))
+    const interesFixed = Number(interes.toFixed(2))
+    const totalFixed = Number((capitalFixed + interesFixed).toFixed(2))
+
     cuotas.push({
       numero: i,
       fecha: fechaActual.toISOString().split('T')[0],
-      capital: Number(capital.toFixed(2)),
-      interes: Number(interes.toFixed(2)),
-      total: Number(cuotaPeriodo.toFixed(2)),
+      capital: capitalFixed,
+      interes: interesFixed,
+      total: totalFixed,
       capital_pendiente: Number(Math.max(0, saldo).toFixed(2)),
       pagada: false,
       modo: esAproximado ? 'aproximado' : 'calculado',
@@ -224,23 +231,29 @@ export function generarCronogramaFrances(monto, tea, numCuotas, fechaInicio, fre
  * Interés simple: I = P * TEA * (días / 365)
  * Total = P + I
  */
-function generarCuotaUnica(monto, tea, fechaInicio, esAproximado = false) {
+function generarCuotaUnica(monto, tea, fechaInicio, fechaVencimiento, esAproximado = false) {
   const teaDec = (tea || 0) / 100
-  const fechaVenc = new Date(fechaInicio)
-  fechaVenc.setFullYear(fechaVenc.getFullYear() + 1) // 1 año por defecto para cuota única
+  const fechaVenc = new Date(fechaVencimiento || fechaInicio)
+  
+  if (!fechaVencimiento) {
+    fechaVenc.setFullYear(fechaVenc.getFullYear() + 1) // 1 año por defecto para cuota única
+  }
 
-  const diasPrestamo = Math.round(
+  const diasPrestamo = Math.max(0, Math.round(
     (fechaVenc - new Date(fechaInicio)) / (1000 * 60 * 60 * 24)
-  )
+  ))
   const interes = monto * teaDec * (diasPrestamo / 365)
-  const total = monto + interes
+  
+  const capitalFixed = Number(monto.toFixed(2))
+  const interesFixed = Number(interes.toFixed(2))
+  const totalFixed = Number((capitalFixed + interesFixed).toFixed(2))
 
   return [{
     numero: 1,
     fecha: fechaVenc.toISOString().split('T')[0],
-    capital: Number(monto.toFixed(2)),
-    interes: Number(interes.toFixed(2)),
-    total: Number(total.toFixed(2)),
+    capital: capitalFixed,
+    interes: interesFixed,
+    total: totalFixed,
     capital_pendiente: 0,
     pagada: false,
     modo: esAproximado ? 'aproximado' : 'calculado',
