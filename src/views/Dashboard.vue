@@ -13,7 +13,10 @@ const notificationsStore = useNotificationsStore()
 const router = useRouter()
 
 onMounted(async () => {
-  await deudasStore.fetchDeudas()
+  await Promise.all([
+    deudasStore.fetchDeudas(),
+    deudasStore.fetchCuotaTotalMes()
+  ])
   checkVencimientosHoy()
 })
 
@@ -24,9 +27,8 @@ const checkVencimientosHoy = () => {
 
   deudasStore.deudas.forEach(deuda => {
     if (deuda.estado !== 'activa') return
-    const cuotas = deudasStore.cuotasPorDeuda[deuda.id] || []
-    const venceHoy = cuotas.some(c => c.fecha === hoyStr && !c.pagada)
-    if (venceHoy) {
+    // Usamos el campo directo de la base de datos O(1) en vez de iterar arrays O(N)
+    if (deuda.fecha_proxima_cuota === hoyStr) {
       cuotasDeHoy++
       deudasVencenHoy.push(deuda.nombre)
     }

@@ -19,28 +19,10 @@ export const useDeudasStore = defineStore('deudas', () => {
     return deudas.value.reduce((acc, deuda) => acc + Number(deuda.total_pendiente || 0), 0)
   })
 
-  const cuotaTotalMes = computed(() => {
-    if (!Array.isArray(deudas.value)) return 0
-    const ahora = new Date()
-    const mesActual = ahora.getMonth()
-    const anoActual = ahora.getFullYear()
-    
-    return deudas.value.reduce((acc, deuda) => {
-      const cuotas = cuotasPorDeuda.value[deuda.id] || []
-      const cuotasDelMes = cuotas.filter(c => {
-        if (c.pagada || !c.fecha) return false
-        const parts = c.fecha.split('-')
-        if (parts.length < 2) return false
-        
-        const year = Number(parts[0])
-        const month = Number(parts[1])
-        return (year === anoActual && (month - 1) === mesActual)
-      })
-      
-      const sumaMes = cuotasDelMes.reduce((sum, c) => sum + Number(c.total || 0), 0)
-      return acc + sumaMes
-    }, 0)
-  })
+  // Ya no se calcula en memoria iterando miles de cuotas.
+  // Idealmente esto debería venir de una vista SQL, pero por compatibilidad rápida
+  // lo calcularemos cuando el Dashboard lo necesite explícitamente consultando la DB.
+  const cuotaTotalMes = ref(0)
 
   const deudasActivas = computed(() =>
     deudas.value.filter(d => d.estado === 'activa')
@@ -63,7 +45,7 @@ export const useDeudasStore = defineStore('deudas', () => {
     if (!authStore.user) return
     loading.value = true
     try {
-      // 1. Fetch resumen de deudas (Vista)
+      // Fetch SOLO resumen de deudas (Vista ligera). O(1) carga de red.
       const { data: resumenData, error: resumenError } = await supabase
         .from('v_resumen_deudas')
         .select('*')
@@ -71,48 +53,57 @@ export const useDeudasStore = defineStore('deudas', () => {
 
       if (resumenError) throw resumenError
 
-      // 2. Fetch cronograma consolidado (Vista)
-      const { data: cuotasData, error: cuotasError } = await supabase
-        .from('v_cronograma_consolidado')
-        .select('*')
-        .order('numero_cuota', { ascending: true })
-
-      if (cuotasError) throw cuotasError
-
-      // Mapear deuda_id a id para mantener compatibilidad con el resto de la app
-      const normalizedDeudas = (resumenData || []).map(d => ({
-        ...d,
-        id: d.deuda_id
-      }))
-
-      deudas.value = normalizedDeudas
-
-      // Llenar caché de cuotas usando la vista consolidada
-      const mapCuotas = {}
-      normalizedDeudas.forEach(d => { mapCuotas[d.id] = [] })
-      
-      ;(cuotasData || []).forEach(c => {
-        // Mapeamos cuota_id a id, y numero_cuota a numero para compatibilidad
-        const mappedCuota = {
-          ...c,
-          id: c.cuota_id,
-          numero: c.numero_cuota
-        }
-        if (!mapCuotas[c.deuda_id]) mapCuotas[c.deuda_id] = []
-        mapCuotas[c.deuda_id].push(mappedCuota)
-      })
-      
-      // Ordenar cuotas
-      for (const key in mapCuotas) {
-        mapCuotas[key].sort((a, b) => a.numero - b.numero)
-      }
-      cuotasPorDeuda.value = mapCuotas
+      deudas.value = (resumenData || []).map(d => ({ ...d, id: d.deuda_id }))
 
     } catch (error) {
       console.error('Error fetching deudas:', error)
     } finally {
       loading.value = false
     }
+  }
+
+  // Carga las cuotas de un mes en particular (para el dashboard)
+  async function fetchCuotaTotalMes() {
+    if (!authStore.user) return
+    const { data } = await supabase.rpc('obtener_total_mes_actual') // Podemos crearlo, o hacer fetch ligero
+    // Para no crear RPC ahora, hacemos un query ligero a v_cronograma_consolidado
+    const ahora = new Date()
+    const primerDia = new Date(ahora.getFullYear(), ahora.getMonth(), 1).toISOString().split('T')[0]
+    const ultimoDia = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0).toISOString().split('T')[0]
+
+    const { data: cuotasMes } = await supabase
+      .from('v_cronograma_consolidado')
+      .select('total')
+      .gte('fecha', primerDia)
+      .lte('fecha', ultimoDia)
+      .eq('pagada', false)
+      
+    cuotaTotalMes.value = (cuotasMes || []).reduce((acc, c) => acc + Number(c.total || 0), 0)
+  }
+
+  // Carga todas las cuotas de un mes específico para el Calendario
+  async function fetchCalendario(ano, mes) {
+    if (!authStore.user) return []
+    const primerDia = new Date(ano, mes, 1).toISOString().split('T')[0]
+    const ultimoDia = new Date(ano, mes + 1, 0).toISOString().split('T')[0]
+
+    const { data: cuotasMes, error } = await supabase
+      .from('v_cronograma_consolidado')
+      .select('*')
+      .gte('fecha', primerDia)
+      .lte('fecha', ultimoDia)
+      .order('fecha', { ascending: true })
+
+    if (error) {
+      console.error('Error fetching calendario:', error)
+      return []
+    }
+
+    return (cuotasMes || []).map(c => ({
+      ...c,
+      id: c.cuota_id,
+      numero: c.numero_cuota
+    }))
   }
 
   async function addDeuda(deuda, cuotas = []) {
@@ -134,15 +125,20 @@ export const useDeudasStore = defineStore('deudas', () => {
       if (deudaError) throw deudaError
 
       if (cuotas.length > 0) {
-        const cuotasPayload = cuotas.map(c => ({
-          deuda_id: deudaData.id,
-          numero: c.numero,
-          fecha: c.fecha || null,
-          capital: c.capital,
-          interes: c.interes,
-          total: c.total,
-          modo: c.modo || 'calculado',
-        }))
+        const cuotasPayload = cuotas.map(c => {
+          const cap = Number(Number(c.capital || 0).toFixed(2))
+          const int = Number(Number(c.interes || 0).toFixed(2))
+          const tot = Number((cap + int).toFixed(2))
+          return {
+            deuda_id: deudaData.id,
+            numero: c.numero,
+            fecha: c.fecha || null,
+            capital: cap,
+            interes: int,
+            total: tot,
+            modo: c.modo || 'calculado',
+          }
+        })
 
         const { error: cuotasError } = await supabase
           .from('cuotas')
@@ -190,12 +186,6 @@ export const useDeudasStore = defineStore('deudas', () => {
   async function updateDeudaYCuotas(id, deudaUpdates, cuotas = []) {
     loading.value = true
     try {
-      const { data: backupCuotas } = await supabase
-        .from('cuotas')
-        .select('*')
-        .eq('deuda_id', id)
-        .order('numero', { ascending: true })
-
       const { error: updateError } = await supabase
         .from('deudas')
         .update(deudaUpdates)
@@ -203,39 +193,57 @@ export const useDeudasStore = defineStore('deudas', () => {
         
       if (updateError) throw updateError
 
-      const { error: deleteError } = await supabase
-        .from('cuotas')
-        .delete()
-        .eq('deuda_id', id)
-
-      if (deleteError) throw deleteError
-
       if (cuotas.length > 0) {
-        const cuotasPayload = cuotas.map(c => ({
-          deuda_id: id,
-          numero: c.numero,
-          fecha: c.fecha || null,
-          capital: c.capital,
-          interes: c.interes,
-          total: c.total,
-          modo: c.modo || 'calculado',
-        }))
+        // Obtenemos cuotas existentes para preservar sus IDs y vínculos con pagos (pago_id)
+        const { data: existingCuotas } = await supabase
+          .from('cuotas')
+          .select('id, numero, pago_id')
+          .eq('deuda_id', id)
 
+        const existingMap = {}
+        ;(existingCuotas || []).forEach(c => { existingMap[c.numero] = c })
+
+        const cuotasPayload = cuotas.map(c => {
+          const existing = existingMap[c.numero]
+          const cap = Number(Number(c.capital || 0).toFixed(2))
+          const int = Number(Number(c.interes || 0).toFixed(2))
+          const tot = Number((cap + int).toFixed(2))
+          
+          const payload = {
+            deuda_id: id,
+            numero: c.numero,
+            fecha: c.fecha || null,
+            capital: cap,
+            interes: int,
+            total: tot,
+            modo: c.modo || 'calculado',
+          }
+          if (existing) {
+            payload.id = existing.id
+            payload.pago_id = existing.pago_id
+          }
+          return payload
+        })
+
+        // Upsert inteligente: actualiza las que existen, inserta las nuevas
         const { error: cuotasError } = await supabase
           .from('cuotas')
-          .insert(cuotasPayload)
+          .upsert(cuotasPayload)
 
-        if (cuotasError) {
-          console.error('Insert cuotas falló, restaurando backup...', cuotasError)
-          if (backupCuotas && backupCuotas.length > 0) {
-            const restorePayload = backupCuotas.map(
-              ({ id: _id, created_at: _ca, updated_at: _ua, pago_id: _pi, ...rest }) => rest
-            )
-            await supabase.from('cuotas').insert(restorePayload).catch(e =>
-              console.error('No se pudo restaurar el backup de cuotas:', e)
-            )
-          }
-          throw cuotasError
+        if (cuotasError) throw cuotasError
+
+        // Limpiar cuotas sobrantes si el usuario redujo el número de cuotas (ej. de 12 a 6)
+        // SOLO eliminamos las que NO están pagadas para proteger el historial financiero.
+        const newNumeros = cuotasPayload.map(c => c.numero)
+        const toDeleteIds = (existingCuotas || [])
+          .filter(c => !newNumeros.includes(c.numero) && !c.pago_id)
+          .map(c => c.id)
+
+        if (toDeleteIds.length > 0) {
+          await supabase
+            .from('cuotas')
+            .delete()
+            .in('id', toDeleteIds)
         }
       }
 
@@ -269,16 +277,41 @@ export const useDeudasStore = defineStore('deudas', () => {
   // ---------------------------------------------------------------------------
   async function fetchCuotas(deudaId) {
     if (!authStore.user || !deudaId) return []
-    // La vista v_cronograma_consolidado ya nos trae toda la info enriquecida
-    const cuotas = cuotasPorDeuda.value[deudaId] || []
-    return cuotas
+    // Lazy load: solo traemos el cronograma de ESTA deuda desde la DB
+    const { data: cuotasData, error } = await supabase
+      .from('v_cronograma_consolidado')
+      .select('*')
+      .eq('deuda_id', deudaId)
+      .order('numero_cuota', { ascending: true })
+
+    if (error) {
+      console.error('Error fetching cuotas:', error)
+      return []
+    }
+
+    const cuotasNormalizadas = (cuotasData || []).map(c => ({
+      ...c,
+      id: c.cuota_id,
+      numero: c.numero_cuota
+    }))
+    
+    // Guardamos en caché local para transiciones rápidas
+    cuotasPorDeuda.value[deudaId] = cuotasNormalizadas
+    return cuotasNormalizadas
   }
 
   async function toggleCuotaPagada(cuota, deuda) {
     const nuevaPagada = !cuota.pagada
+    
+    // Optimistic UI update: actualizar inmediatamente en la UI local para que se sienta instantáneo
+    cuota.pagada = nuevaPagada
+    if (cuotasPorDeuda.value[deuda.id]) {
+      const idx = cuotasPorDeuda.value[deuda.id].findIndex(c => c.id === cuota.id)
+      if (idx !== -1) cuotasPorDeuda.value[deuda.id][idx].pagada = nuevaPagada
+    }
+
     try {
       if (nuevaPagada) {
-        // Registrar un pago real usando la RPC que automáticamente vincula la cuota
         const { error: rpcError } = await supabase.rpc('registrar_pago', {
           p_deuda_id: deuda.id,
           p_monto: cuota.total,
@@ -287,7 +320,6 @@ export const useDeudasStore = defineStore('deudas', () => {
         })
         if (rpcError) throw rpcError
       } else {
-        // Desmarcar: Borrar el registro de la tabla pagos si existe el pago_id
         if (cuota.pago_id) {
           const { error: deleteError } = await supabase
             .from('pagos')
@@ -297,10 +329,17 @@ export const useDeudasStore = defineStore('deudas', () => {
         }
       }
 
-      // Refrescar todo desde Supabase para tener saldos actualizados
+      // Sync final en background
       await fetchDeudas()
+      fetchCuotaTotalMes()
       return true
     } catch (error) {
+      // Revert Optimistic UI en caso de error
+      cuota.pagada = !nuevaPagada
+      if (cuotasPorDeuda.value[deuda.id]) {
+        const idx = cuotasPorDeuda.value[deuda.id].findIndex(c => c.id === cuota.id)
+        if (idx !== -1) cuotasPorDeuda.value[deuda.id][idx].pagada = !nuevaPagada
+      }
       console.error('Error toggling cuota:', error)
       throw error
     }
@@ -315,6 +354,8 @@ export const useDeudasStore = defineStore('deudas', () => {
     deudasActivas,
     proximosVencimientos,
     fetchDeudas,
+    fetchCuotaTotalMes,
+    fetchCalendario,
     addDeuda,
     updateDeuda,
     updateDeudaYCuotas,

@@ -45,68 +45,53 @@ const colorPorDeuda = computed(() => {
 })
 
 // ── Carga de datos ──────────────────────────────────
-async function cargarTodasLasCuotas() {
+async function cargarCuotasMes() {
   if (!authStore.user) return
   loading.value = true
   try {
-    // Aseguramos que las deudas estén cargadas
     if (deudasStore.deudas.length === 0) {
       await deudasStore.fetchDeudas()
     }
-
-    // Traer TODAS las cuotas del usuario usando la nueva vista consolidada
-    const { data, error } = await supabase
-      .from('v_cronograma_consolidado')
-      .select('*')
-      .order('fecha', { ascending: true })
-
-    if (error) throw error
-
-    // Enriquecer cada cuota con la info de su deuda (ya cargada en el store)
     const deudasMap = {}
     deudasStore.deudas.forEach(d => { deudasMap[d.id] = d })
 
-    todasLasCuotas.value = (data || []).map(c => ({
+    const cuotas = await deudasStore.fetchCalendario(anioActual.value, mesActual.value)
+    
+    todasLasCuotas.value = cuotas.map(c => ({
       ...c,
-      id: c.cuota_id,
-      numero: c.numero_cuota,
       deuda: deudasMap[c.deuda_id] || null,
-    }))
+    })).sort((a, b) => {
+      if (a.pagada !== b.pagada) return a.pagada ? 1 : -1
+      return new Date(a.fecha) - new Date(b.fecha)
+    })
   } catch (e) {
-    console.error('Error cargando cuotas:', e)
+    console.error('Error cargando cuotas del mes:', e)
   } finally {
     loading.value = false
   }
 }
 
-onMounted(cargarTodasLasCuotas)
+onMounted(cargarCuotasMes)
 
 // ── Navegación de mes ───────────────────────────────
-function mesAnterior() {
+async function mesAnterior() {
   if (mesActual.value === 0) { mesActual.value = 11; anioActual.value-- }
   else mesActual.value--
+  await cargarCuotasMes()
 }
-function mesSiguiente() {
+async function mesSiguiente() {
   if (mesActual.value === 11) { mesActual.value = 0; anioActual.value++ }
   else mesActual.value++
+  await cargarCuotasMes()
 }
-function irHoy() {
+async function irHoy() {
   mesActual.value = hoy.getMonth()
   anioActual.value = hoy.getFullYear()
+  await cargarCuotasMes()
 }
 
 // ── Cuotas del mes seleccionado ─────────────────────
-const cuotasDelMes = computed(() => {
-  return todasLasCuotas.value
-    .filter(c => {
-      const f = new Date(c.fecha + 'T12:00:00')
-      return f.getFullYear() === anioActual.value && f.getMonth() === mesActual.value
-    })
-    .sort((a, b) => {
-      if (a.pagada !== b.pagada) return a.pagada ? 1 : -1
-      return new Date(a.fecha) - new Date(b.fecha)
-    })
-})
+const cuotasDelMes = computed(() => todasLasCuotas.value)
 
 
 // ── Totales del mes ─────────────────────────────────
@@ -130,7 +115,8 @@ async function togglePagada(cuota) {
   try {
     await deudasStore.toggleCuotaPagada(cuota, cuota.deuda)
     // Refrescar las cuotas para asegurar que la vista esté actualizada con el pago
-    await cargarTodasLasCuotas()
+    // No hace falta porque deudasStore hace optimistic UI, pero si queremos recalcular totales
+    await cargarCuotasMes()
   } catch (e) {
     console.error(e)
   } finally {
