@@ -21,7 +21,8 @@ onMounted(async () => {
 })
 
 const checkVencimientosHoy = () => {
-  const hoyStr = new Date().toISOString().split('T')[0]
+  const hoy = new Date()
+  const hoyStr = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-' + String(hoy.getDate()).padStart(2, '0')
   let cuotasDeHoy = 0
   const deudasVencenHoy = []
 
@@ -80,15 +81,6 @@ const handleEliminar = async (id) => {
   }
 }
 
-const handleTogglePagada = async (deuda) => {
-  const nuevoEstado = deuda.estado === 'cerrada' ? 'activa' : 'cerrada'
-  try {
-    await deudasStore.updateDeuda(deuda.id, { estado: nuevoEstado })
-    notificationsStore.success(`Deuda marcada como ${nuevoEstado}`)
-  } catch (error) {
-    notificationsStore.error('Error al actualizar: ' + error.message)
-  }
-}
 
 /** Clases CSS para el badge de alerta de TEA en las tarjetas */
 const teaBadgeClasses = (deuda) => {
@@ -116,7 +108,7 @@ const frecuenciaLabel = (freq) => {
 /** Formatea monto usando la moneda guardada por deuda */
 const formatMonto = (monto, moneda) => formatearMoneda(monto, moneda || 'PEN')
 
-// El monto pendiente ahora viene directamente de v_resumen_deudas
+// El monto pendiente ahora viene directamente de saldo_capital (v_resumen_deudas)
 </script>
 
 <template>
@@ -259,10 +251,12 @@ const formatMonto = (monto, moneda) => formatearMoneda(monto, moneda || 'PEN')
           <div
             class="mt-4 sm:mt-0 text-left sm:text-right w-full sm:w-auto flex flex-col sm:items-end justify-between border-t border-slate-100 sm:border-0 pt-3 sm:pt-0 gap-3 sm:gap-2">
             <div class="flex sm:flex-col justify-between items-center sm:items-end w-full">
-              <p class="font-extrabold text-lg text-slate-900">{{ formatMonto(deuda.total_pendiente || 0, deuda.moneda) }}
-              </p>
+              <div class="flex flex-col sm:items-end">
+                <span class="text-xs text-slate-400 font-medium leading-none mb-1">Monto Pendiente</span>
+                <p class="font-extrabold text-lg text-slate-900">{{ formatMonto(deuda.total_pendiente || 0, deuda.moneda) }}</p>
+              </div>
               <span
-                class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider mt-0 sm:mt-1"
+                class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider mt-0 sm:mt-2"
                 :class="{
                   'bg-emerald-100 text-emerald-700': deuda.estado === 'activa',
                   'bg-amber-100 text-amber-700': deuda.estado === 'pausada',
@@ -274,18 +268,10 @@ const formatMonto = (monto, moneda) => formatearMoneda(monto, moneda || 'PEN')
 
             <!-- Actions -->
             <div class="flex items-center gap-2 justify-end w-full">
-              <button @click.stop="handleTogglePagada(deuda)"
-                class="p-2 rounded-lg transition-colors flex items-center justify-center"
-                :class="deuda.estado === 'cerrada' ? 'text-emerald-600 hover:bg-emerald-50' : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'"
-                :title="deuda.estado === 'cerrada' ? 'Marcar como activa' : 'Marcar como pagada'">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
-                  stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                </svg>
-              </button>
               <button @click.stop="handleEliminar(deuda.id)"
                 class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center justify-center"
-                title="Eliminar deuda">
+                title="Eliminar deuda"
+                aria-label="Eliminar deuda">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
                   stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
