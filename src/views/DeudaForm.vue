@@ -141,11 +141,16 @@ watch(
     }
     
     try {
+      const fechaParaPrimeraCuota = frecuencia_pago === 'cuota_unica'
+        ? formData.value.fecha_vencimiento || formData.value.fecha_inicio
+        : formData.value.fecha_primer_pago || formData.value.fecha_inicio
+
       cuotasManuales.value = generarCronogramaFrances(
         Number(monto_original),
         Number(tasaUsada),
         Number(num_cuotas) || 1,
         fecha_inicio,
+        fechaParaPrimeraCuota,
         frecuencia_pago,
         !tea && !!tcea, // es aproximado
         Number(formData.value.base_calculo) || 365,
@@ -207,28 +212,30 @@ const handleSubmit = async () => {
     if (formData.value.tea && !formData.value.tasa_mensual) {
       calcularTasaMensualDesdeTEA()
     }
-    const { id, user_id, created_at, updated_at, base_calculo, redondear_cuota, cuotas_pagadas, cuotas, ...payloadLimpio } = formData.value
-    const payload = { ...payloadLimpio }
+    // Construir explícitamente el payload con las columnas reales de la tabla 'deudas' v3
+    // Esto evita que se envíen accidentalmente columnas calculadas provenientes de 'v_resumen_deudas'
+    // (como cuotas_pendientes, saldo_capital, total_pagado, etc.)
+    const payload = {
+      nombre: formData.value.nombre,
+      tipo: formData.value.tipo,
+      entidad: formData.value.entidad,
+      moneda: formData.value.moneda,
+      monto_original: formData.value.monto_original,
+      frecuencia_pago: formData.value.frecuencia_pago,
+      fecha_inicio: formData.value.fecha_inicio,
+      fecha_primer_pago: formData.value.fecha_primer_pago || null,
+      num_cuotas: formData.value.num_cuotas || null,
+      tea: formData.value.tea || null,
+      tcea: formData.value.tcea || null,
+      notas: formData.value.notas || null,
+    }
 
     // Asegurar que las cuotas a guardar tengan la marca de 'pagada' correcta
-    const pagadas = Number(cuotas_pagadas) || 0
+    const pagadas = Number(formData.value.cuotas_pagadas) || 0
     const finalCuotasGuardar = cuotasFinales.value.map((c, i) => ({
       ...c,
       pagada: i < pagadas
     }))
-
-    // Calcular saldo_capital inicial (capital amortizado restante)
-    if (pagadas === 0 || finalCuotasGuardar.length === 0) {
-      payload.saldo_capital = payload.monto_original
-    } else {
-      // El saldo de capital es el capital_pendiente de la última cuota pagada
-      const ultimaPagada = finalCuotasGuardar[Math.min(pagadas, finalCuotasGuardar.length) - 1]
-      payload.saldo_capital = ultimaPagada ? ultimaPagada.capital_pendiente : 0
-    }
-
-    if (payload.fecha_vencimiento === '') payload.fecha_vencimiento = null
-    if (payload.tea === '') payload.tea = null
-    if (payload.tcea === '') payload.tcea = null
 
     if (isEditMode.value) {
       await deudasStore.updateDeudaYCuotas(editId, payload, finalCuotasGuardar)
