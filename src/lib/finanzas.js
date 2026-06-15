@@ -262,15 +262,20 @@ function generarCuotaUnica(monto, tea, fechaInicio, fechaVencimiento, esAproxima
 
 /**
  * Avanza la fecha según la frecuencia de pago.
+ *
+ * - mensual    : suma 1 mes de calendario (respeta longitud del mes).
+ * - quincenal  : suma exactamente 15 días.
+ * - catorcenal : suma exactamente 14 días.
+ * - semanal    : suma exactamente 7 días.
  */
 function avanzarFecha(fecha, frecuencia, dias) {
   const d = new Date(fecha)
-  switch (frecuencia) {
-    case 'mensual':
-      d.setMonth(d.getMonth() + 1)
-      break
-    default:
-      d.setDate(d.getDate() + dias)
+  if (frecuencia === 'mensual') {
+    d.setMonth(d.getMonth() + 1)
+  } else {
+    // Para quincenal (15d), catorcenal (14d) y semanal (7d),
+    // la suma de días exactos es el comportamiento correcto.
+    d.setDate(d.getDate() + dias)
   }
   return d
 }
