@@ -41,9 +41,9 @@ export const useDeudasStore = defineStore('deudas', () => {
   // ---------------------------------------------------------------------------
   // Deudas - CRUD
   // ---------------------------------------------------------------------------
-  async function fetchDeudas() {
+  async function fetchDeudas(silent = false) {
     if (!authStore.user) return
-    loading.value = true
+    if (!silent) loading.value = true
     try {
       // Fetch SOLO resumen de deudas (Vista ligera). O(1) carga de red.
       const { data: resumenData, error: resumenError } = await supabase
@@ -58,7 +58,7 @@ export const useDeudasStore = defineStore('deudas', () => {
     } catch (error) {
       console.error('Error fetching deudas:', error)
     } finally {
-      loading.value = false
+      if (!silent) loading.value = false
     }
   }
 
@@ -203,7 +203,10 @@ export const useDeudasStore = defineStore('deudas', () => {
         const existingMap = {}
         ;(existingCuotas || []).forEach(c => { existingMap[c.numero] = c })
 
-        const cuotasPayload = cuotas.map(c => {
+        const toInsert = []
+        const toUpdate = []
+
+        cuotas.forEach(c => {
           const existing = existingMap[c.numero]
           const cap = Number(Number(c.capital || 0).toFixed(2))
           const int = Number(Number(c.interes || 0).toFixed(2))
@@ -221,20 +224,27 @@ export const useDeudasStore = defineStore('deudas', () => {
           if (existing) {
             payload.id = existing.id
             payload.pago_id = existing.pago_id
+            toUpdate.push(payload)
+          } else {
+            toInsert.push(payload)
           }
-          return payload
         })
 
-        // Upsert inteligente: actualiza las que existen, inserta las nuevas
-        const { error: cuotasError } = await supabase
-          .from('cuotas')
-          .upsert(cuotasPayload)
+        // Insertar nuevas cuotas
+        if (toInsert.length > 0) {
+          const { error: insertError } = await supabase.from('cuotas').insert(toInsert)
+          if (insertError) throw insertError
+        }
 
-        if (cuotasError) throw cuotasError
+        // Actualizar cuotas existentes
+        if (toUpdate.length > 0) {
+          const { error: updateError } = await supabase.from('cuotas').upsert(toUpdate)
+          if (updateError) throw updateError
+        }
 
         // Limpiar cuotas sobrantes si el usuario redujo el número de cuotas (ej. de 12 a 6)
         // SOLO eliminamos las que NO están pagadas para proteger el historial financiero.
-        const newNumeros = cuotasPayload.map(c => c.numero)
+        const newNumeros = cuotas.map(c => c.numero)
         const toDeleteIds = (existingCuotas || [])
           .filter(c => !newNumeros.includes(c.numero) && !c.pago_id)
           .map(c => c.id)
@@ -329,9 +339,9 @@ export const useDeudasStore = defineStore('deudas', () => {
         }
       }
 
-      // Sync final en background
-      await fetchDeudas()
-      fetchCuotaTotalMes()
+      // Sync final en background (silencioso para evitar destellos)
+      await fetchDeudas(true)
+      await fetchCuotaTotalMes()
       return true
     } catch (error) {
       // Revert Optimistic UI en caso de error

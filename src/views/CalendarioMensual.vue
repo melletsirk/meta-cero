@@ -45,12 +45,12 @@ const colorPorDeuda = computed(() => {
 })
 
 // ── Carga de datos ──────────────────────────────────
-async function cargarCuotasMes() {
+async function cargarCuotasMes(silent = false) {
   if (!authStore.user) return
-  loading.value = true
+  if (!silent) loading.value = true
   try {
     if (deudasStore.deudas.length === 0) {
-      await deudasStore.fetchDeudas()
+      await deudasStore.fetchDeudas(silent)
     }
     const deudasMap = {}
     deudasStore.deudas.forEach(d => { deudasMap[d.id] = d })
@@ -67,7 +67,7 @@ async function cargarCuotasMes() {
   } catch (e) {
     console.error('Error cargando cuotas del mes:', e)
   } finally {
-    loading.value = false
+    if (!silent) loading.value = false
   }
 }
 
@@ -114,9 +114,8 @@ async function togglePagada(cuota) {
   toggling.value[cuota.id] = true
   try {
     await deudasStore.toggleCuotaPagada(cuota, cuota.deuda)
-    // Refrescar las cuotas para asegurar que la vista esté actualizada con el pago
-    // No hace falta porque deudasStore hace optimistic UI, pero si queremos recalcular totales
-    await cargarCuotasMes()
+    // Refrescar totales en background, sin destruir la tabla (modo silencioso)
+    await cargarCuotasMes(true)
   } catch (e) {
     console.error(e)
   } finally {
