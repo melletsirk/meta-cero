@@ -38,6 +38,12 @@ const routes = [
     component: () => import('../views/CalendarioMensual.vue'),
     meta: { requiresAuth: true }
   },
+  {
+    path: '/perfil',
+    name: 'Perfil',
+    component: () => import('../views/Perfil.vue'),
+    meta: { requiresAuth: true }
+  },
 ]
 
 const router = createRouter({

@@ -65,10 +65,32 @@ const handleLogout = async () => {
           </svg>
           <span v-if="isSidebarOpen" class="whitespace-nowrap">Calendario</span>
         </router-link>
+
+        <router-link to="/perfil" @click="isMobileMenuOpen = false" class="flex items-center gap-3 px-3 py-3 rounded-xl text-slate-600 hover:text-indigo-600 hover:bg-indigo-50/80 transition-all font-medium group" active-class="text-indigo-700 bg-indigo-50/80 shadow-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+          <span v-if="isSidebarOpen" class="whitespace-nowrap">Mi Perfil</span>
+        </router-link>
       </div>
 
       <!-- Sidebar Footer -->
       <div class="p-4 border-t border-white/20 shrink-0">
+        <!-- Info de usuario (solo cuando sidebar expandido) -->
+        <div v-if="isSidebarOpen" class="flex items-center gap-3 px-3 py-2.5 mb-3 rounded-xl bg-white/30">
+          <div class="h-8 w-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shrink-0 shadow-sm">
+            <span class="text-xs font-extrabold text-white">
+              {{ (authStore.user?.user_metadata?.full_name || authStore.user?.email || 'U').charAt(0).toUpperCase() }}
+            </span>
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-xs font-bold text-slate-700 truncate">
+              {{ authStore.user?.user_metadata?.full_name || authStore.user?.email?.split('@')[0] }}
+            </p>
+            <p class="text-xs text-slate-400 truncate font-medium">{{ authStore.user?.email }}</p>
+          </div>
+        </div>
+
         <!-- Desktop Toggle -->
         <button @click="isSidebarOpen = !isSidebarOpen" class="hidden md:flex items-center justify-center w-full p-2 text-slate-400 hover:text-indigo-600 hover:bg-white/50 rounded-lg transition-colors mb-4">
           <svg v-if="isSidebarOpen" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
