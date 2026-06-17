@@ -24,3 +24,7 @@ dist-ssr
 *.sw?
 # SQL files (schema, migrations — apply directly in Supabase dashboard)
 *.sql
+
+# Supabase temp and env files
+.env
+supabase/.temp/
