@@ -66,6 +66,13 @@ const handleLogout = async () => {
           <span v-if="isSidebarOpen" class="whitespace-nowrap">Calendario</span>
         </router-link>
 
+        <router-link to="/atrasadas" @click="isMobileMenuOpen = false" class="flex items-center gap-3 px-3 py-3 rounded-xl text-slate-600 hover:text-red-600 hover:bg-red-50/80 transition-all font-medium group" active-class="text-red-700 bg-red-50/80 shadow-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span v-if="isSidebarOpen" class="whitespace-nowrap">Atrasadas</span>
+        </router-link>
+
         <router-link to="/perfil" @click="isMobileMenuOpen = false" class="flex items-center gap-3 px-3 py-3 rounded-xl text-slate-600 hover:text-indigo-600 hover:bg-indigo-50/80 transition-all font-medium group" active-class="text-indigo-700 bg-indigo-50/80 shadow-sm">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
