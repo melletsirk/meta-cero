@@ -6,7 +6,8 @@ const props = defineProps({
   modelValue: { type: Array, default: () => [] },
   moneda: { type: String, default: 'PEN' },
   readonly: { type: Boolean, default: false },
-  togglingId: { type: [Number, String], default: null }
+  togglingId: { type: [Number, String], default: null },
+  esAproximado: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['update:modelValue', 'toggle'])
@@ -56,10 +57,21 @@ const saldosConIntereses = computed(() => {
 
 const aplicarMontoGlobal = () => {
   if (montoFijo.value && montoGlobal.value !== null && montoGlobal.value !== '') {
-    const newCuotas = cuotas.value.map(c => ({
-      ...c,
-      total: Number(montoGlobal.value)
-    }))
+    const newCuotas = cuotas.value.map(c => {
+      const newVal = Number(Number(montoGlobal.value).toFixed(2))
+      const oldInteres = Number(c.interes || 0)
+      let newCapital = newVal - oldInteres
+      if (newCapital < 0) newCapital = 0
+      const finalCapital = Number(newCapital.toFixed(2))
+      const finalInteres = Number((newVal - finalCapital).toFixed(2))
+      
+      return {
+        ...c,
+        total: newVal,
+        capital: finalCapital,
+        interes: finalInteres
+      }
+    })
     emit('update:modelValue', newCuotas)
   }
 }
@@ -78,7 +90,25 @@ watch(montoFijo, (isFijo) => {
 const updateCuota = (idx, field, value) => {
   if (props.readonly) return
   const newCuotas = [...cuotas.value]
-  newCuotas[idx] = { ...newCuotas[idx], [field]: value }
+  
+  let finalValue = value
+  if (field === 'total') {
+    finalValue = Number(Number(value).toFixed(2))
+  }
+  
+  const cuotaObj = { ...newCuotas[idx], [field]: finalValue }
+  
+  // Si el usuario modificó el total manualmente, debemos ajustar capital/interés 
+  // para que siga pasando la validación de la base de datos (total = capital + interes)
+  if (field === 'total') {
+    const oldInteres = Number(cuotaObj.interes || 0)
+    let newCapital = finalValue - oldInteres
+    if (newCapital < 0) newCapital = 0
+    cuotaObj.capital = Number(newCapital.toFixed(2))
+    cuotaObj.interes = Number((finalValue - cuotaObj.capital).toFixed(2))
+  }
+  
+  newCuotas[idx] = cuotaObj
   emit('update:modelValue', newCuotas)
 }
 
@@ -86,7 +116,28 @@ const handlePagoClick = (cuota, idx) => {
   if (props.readonly) {
     emit('toggle', cuota)
   } else {
-    updateCuota(idx, 'pagada', !cuota.pagada)
+    const newPagada = !cuota.pagada
+    
+    // Regla Secuencial: Los bancos exigen pagar en orden.
+    if (newPagada) {
+      // Al marcar como pagada, verificar que las anteriores estén pagadas
+      for (let i = 0; i < idx; i++) {
+        if (!cuotas.value[i].pagada) {
+          alert('Debes marcar primero las cuotas anteriores.')
+          return
+        }
+      }
+    } else {
+      // Al desmarcar, verificar que las siguientes no estén pagadas
+      for (let i = idx + 1; i < cuotas.value.length; i++) {
+        if (cuotas.value[i].pagada) {
+          alert('Debes desmarcar primero las cuotas posteriores.')
+          return
+        }
+      }
+    }
+    
+    updateCuota(idx, 'pagada', newPagada)
   }
 }
 </script>
@@ -141,7 +192,8 @@ const handlePagoClick = (cuota, idx) => {
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100 bg-white">
-            <tr v-for="(cuota, idx) in cuotas" :key="idx" class="border-t border-slate-100 transition-colors group"
+            <tr v-for="(cuota, idx) in cuotas" :key="cuota.id || cuota.numero || idx"
+              class="border-t border-slate-100 transition-colors group"
               :class="cuota.pagada ? 'bg-emerald-50/40' : 'hover:bg-slate-50/70'">
               <!-- N° -->
               <td class="px-4 py-3 font-bold text-slate-600 text-xs text-center">
