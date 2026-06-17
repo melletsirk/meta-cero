@@ -91,23 +91,31 @@ async function irHoy() {
   await cargarCuotasMes()
 }
 
-// ── Cuotas del mes seleccionado ─────────────────────
-const cuotasDelMes = computed(() => todasLasCuotas.value)
-
-
 // ── Totales del mes ─────────────────────────────────
+// Total general del mes (todas las cuotas, pagadas + pendientes)
 const totalMesPEN = computed(() =>
-  cuotasDelMes.value
+  todasLasCuotas.value
     .filter(c => (c.deuda?.moneda || 'PEN') === 'PEN')
     .reduce((s, c) => s + Number(c.total), 0)
 )
 const totalMesUSD = computed(() =>
-  cuotasDelMes.value
+  todasLasCuotas.value
     .filter(c => c.deuda?.moneda === 'USD')
     .reduce((s, c) => s + Number(c.total), 0)
 )
-const cuotasPagadas = computed(() => cuotasDelMes.value.filter(c => c.pagada).length)
-const cuotasPendientes = computed(() => cuotasDelMes.value.filter(c => !c.pagada).length)
+// Total pendiente del mes (solo cuotas sin pagar)
+const pendienteMesPEN = computed(() =>
+  todasLasCuotas.value
+    .filter(c => !c.pagada && (c.deuda?.moneda || 'PEN') === 'PEN')
+    .reduce((s, c) => s + Number(c.total), 0)
+)
+const pendienteMesUSD = computed(() =>
+  todasLasCuotas.value
+    .filter(c => !c.pagada && c.deuda?.moneda === 'USD')
+    .reduce((s, c) => s + Number(c.total), 0)
+)
+const cuotasPagadas = computed(() => todasLasCuotas.value.filter(c => c.pagada).length)
+const cuotasPendientes = computed(() => todasLasCuotas.value.filter(c => !c.pagada).length)
 
 // ── Toggle pagada (con regla secuencial) ─────────────────────────────────────
 const toggling = ref({})
@@ -143,9 +151,11 @@ async function togglePagada(cuota) {
   // ────────────────────────────────────────────────────────────────────────────
 
   toggling.value[cuota.id] = true
+  // Capturar estado previo ANTES del optimistic update del store
+  const estabaPageda = cuota.pagada
   try {
     await deudasStore.toggleCuotaPagada(cuota, cuota.deuda)
-    const msg = !cuota.pagada ? '✅ Cuota marcada como pagada' : '↩ Cuota desmarcada'
+    const msg = estabaPageda ? '↩ Cuota desmarcada' : '✅ Cuota marcada como pagada'
     notificationsStore.success(msg)
     // Refrescar totales en background, sin destruir la tabla (modo silencioso)
     await cargarCuotasMes(true)
@@ -165,8 +175,14 @@ function formatFecha(fechaStr) {
 function formatMonto(monto, moneda) {
   return formatearMoneda(Number(monto), moneda || 'PEN')
 }
-function esHoy(dia) {
-  return dia === hoy.getDate() && mesActual.value === hoy.getMonth() && anioActual.value === hoy.getFullYear()
+// Recibe el string de fecha completo (YYYY-MM-DD) para comparar correctamente
+function esHoy(fechaStr) {
+  const f = new Date(fechaStr + 'T12:00:00')
+  return (
+    f.getDate()     === hoy.getDate()     &&
+    f.getMonth()    === hoy.getMonth()    &&
+    f.getFullYear() === hoy.getFullYear()
+  )
 }
 function esPasado(fechaStr) {
   return new Date(fechaStr + 'T12:00:00') < hoy
@@ -220,18 +236,30 @@ function esPasado(fechaStr) {
 
     <!-- ── Resumen del mes ── -->
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <!-- Pendiente del mes (lo que falta pagar) -->
       <div class="glass p-4 rounded-2xl border border-white/60 shadow-sm text-center">
-        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Total PEN</p>
+        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Pendiente</p>
+        <p class="text-xl font-extrabold" :class="cuotasPendientes > 0 ? 'text-amber-600' : 'text-slate-400'">
+          {{ formatMonto(pendienteMesPEN, 'PEN') }}
+        </p>
+        <p v-if="pendienteMesUSD > 0" class="text-sm font-bold text-emerald-600 mt-0.5">
+          + {{ formatMonto(pendienteMesUSD, 'USD') }}
+        </p>
+      </div>
+      <!-- Total bruto del mes -->
+      <div class="glass p-4 rounded-2xl border border-white/60 shadow-sm text-center">
+        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Total del Mes</p>
         <p class="text-xl font-extrabold text-slate-900">{{ formatMonto(totalMesPEN, 'PEN') }}</p>
+        <p v-if="totalMesUSD > 0" class="text-sm font-bold text-emerald-600 mt-0.5">
+          + {{ formatMonto(totalMesUSD, 'USD') }}
+        </p>
       </div>
-      <div v-if="totalMesUSD > 0" class="glass p-4 rounded-2xl border border-white/60 shadow-sm text-center">
-        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Total USD</p>
-        <p class="text-xl font-extrabold text-slate-900">{{ formatMonto(totalMesUSD, 'USD') }}</p>
-      </div>
+      <!-- Cuotas pagadas -->
       <div class="glass p-4 rounded-2xl border border-white/60 shadow-sm text-center">
         <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Pagadas</p>
         <p class="text-xl font-extrabold text-emerald-600">{{ cuotasPagadas }}</p>
       </div>
+      <!-- Cuotas pendientes -->
       <div class="glass p-4 rounded-2xl border border-white/60 shadow-sm text-center">
         <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Pendientes</p>
         <p class="text-xl font-extrabold" :class="cuotasPendientes > 0 ? 'text-amber-600' : 'text-slate-400'">
@@ -279,10 +307,10 @@ function esPasado(fechaStr) {
 
             <td class="px-4 py-4 whitespace-nowrap">
               <span class="font-bold text-base"
-                :class="esHoy(new Date(cuota.fecha + 'T12:00:00').getDate()) ? 'text-indigo-600' : 'text-slate-700'">
+                :class="esHoy(cuota.fecha) ? 'text-indigo-600' : 'text-slate-700'">
                 {{ formatFecha(cuota.fecha) }}
               </span>
-              <span v-if="esHoy(new Date(cuota.fecha + 'T12:00:00').getDate())"
+              <span v-if="esHoy(cuota.fecha)"
                 class="ml-2 px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs font-bold rounded-full">Hoy</span>
               <span v-else-if="!cuota.pagada && esPasado(cuota.fecha)"
                 class="ml-2 px-2 py-0.5 bg-red-100 text-red-700 text-xs font-bold rounded-full">Vencida</span>
@@ -299,7 +327,7 @@ function esPasado(fechaStr) {
               </div>
             </td>
 
-            <td class="px-4 py-4 text-center font-bold text-slate-600 text-base">
+            <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-slate-500">
               {{ cuota.numero }}
             </td>
 
@@ -309,11 +337,15 @@ function esPasado(fechaStr) {
             </td>
 
             <td class="px-4 py-4 text-center">
-              <button @click="togglePagada(cuota)" :disabled="toggling[cuota.id]"
-                class="w-8 h-8 mx-auto rounded-full border-2 flex items-center justify-center transition-all" :class="cuota.pagada
+              <button
+                @click="togglePagada(cuota)"
+                :disabled="toggling[cuota.id]"
+                class="w-8 h-8 mx-auto rounded-full border-2 flex items-center justify-center transition-all"
+                :class="cuota.pagada
                   ? 'bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-200'
                   : 'border-slate-300 text-transparent hover:border-emerald-400 hover:text-emerald-400'"
-                :title="cuota.pagada ? 'Marcar como pendiente' : 'Marcar como pagada'">
+                :title="cuota.pagada ? 'Marcar como pendiente' : 'Marcar como pagada'"
+                :aria-label="cuota.pagada ? 'Desmarcar cuota' : 'Marcar cuota como pagada'">
                 <svg v-if="!toggling[cuota.id]" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
                   viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
