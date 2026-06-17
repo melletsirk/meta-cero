@@ -13,6 +13,7 @@ const notificationsStore = useNotificationsStore()
 
 const deudaId = route.params.id
 const cuotas = ref([])
+const loadingDeuda = ref(true)   // loading local, independiente del store
 const loadingCuotas = ref(true)
 const togglingId = ref(null)
 
@@ -47,6 +48,7 @@ onMounted(async () => {
   if (deudasStore.deudas.length === 0) {
     await deudasStore.fetchDeudas()
   }
+  loadingDeuda.value = false
   // Cargar cuotas de esta deuda
   const data = await deudasStore.fetchCuotas(deudaId)
   cuotas.value = data
@@ -82,10 +84,12 @@ const handleToggleCuota = async (cuota) => {
   // ────────────────────────────────────────────────────────────────────────
 
   togglingId.value = cuota.id
+  // Capturar estado previo ANTES del optimistic update del store
+  const estabaPageda = cuota.pagada
   try {
     await deudasStore.toggleCuotaPagada(cuota, deuda.value)
     cuotas.value = deudasStore.cuotasPorDeuda[deudaId] || cuotas.value
-    const msg = !cuota.pagada ? '✅ Cuota marcada como pagada' : '↩ Cuota desmarcada'
+    const msg = estabaPageda ? '↩ Cuota desmarcada' : '✅ Cuota marcada como pagada'
     notificationsStore.success(msg)
   } catch (e) {
     notificationsStore.error('Error al actualizar la cuota')
@@ -120,14 +124,13 @@ const handleEliminar = async () => {
     </div>
 
     <!-- Estado no encontrado -->
-    <div v-if="!deuda && !deudasStore.loading" class="text-center py-20 text-slate-400">
+    <div v-if="!deuda && !loadingDeuda" class="text-center py-20 text-slate-400">
       <p class="text-lg font-bold">Deuda no encontrada</p>
-      <button @click="router.push('/')" class="mt-4 text-indigo-600 font-semibold hover:underline">Volver al
-        inicio</button>
+      <button @click="router.push('/')" class="mt-4 text-indigo-600 font-semibold hover:underline">Volver al inicio</button>
     </div>
 
     <!-- Loading -->
-    <div v-else-if="deudasStore.loading" class="text-center py-20">
+    <div v-else-if="loadingDeuda" class="text-center py-20">
       <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mx-auto"></div>
     </div>
 

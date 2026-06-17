@@ -275,7 +275,7 @@ function esPasado(fechaStr) {
     </div>
 
     <!-- ── Sin cuotas ── -->
-    <div v-else-if="cuotasDelMes.length === 0 && !loading"
+    <div v-else-if="todasLasCuotas.length === 0 && !loading"
       class="glass rounded-3xl border border-white/60 shadow-sm p-12 text-center">
       <div class="bg-slate-100 p-4 rounded-full inline-block mb-4">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-slate-400" fill="none" viewBox="0 0 24 24"
@@ -302,7 +302,7 @@ function esPasado(fechaStr) {
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100">
-          <tr v-for="cuota in cuotasDelMes" :key="cuota.id" class="transition-colors hover:bg-slate-50"
+          <tr v-for="cuota in todasLasCuotas" :key="cuota.id" class="transition-colors hover:bg-slate-50"
             :class="{ 'opacity-60 bg-slate-50': cuota.pagada, 'bg-red-50/50': !cuota.pagada && esPasado(cuota.fecha) }">
 
             <td class="px-4 py-4 whitespace-nowrap">
