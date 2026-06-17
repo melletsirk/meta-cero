@@ -84,18 +84,7 @@ async function sendNotifications() {
   return { ok: true, sent: promesasEnvio.length, msg: "Push enviados correctamente" };
 }
 
-// 1. Ejecución automática moderna usando Deno Cron (13:00 UTC = 8 AM Perú/Colombia)
-Deno.cron("Notificaciones Push Diarias", "0 13 * * *", async () => {
-  console.log("Ejecutando cron job diario de notificaciones...");
-  try {
-    const result = await sendNotifications();
-    console.log("Cron resultado:", result);
-  } catch (err) {
-    console.error("Cron Error:", err);
-  }
-});
-
-// 2. Ejecución manual vía HTTP (para pruebas desde el navegador o consola)
+// Ejecución vía HTTP (para pruebas y para llamarlo vía pg_cron desde Supabase Database)
 Deno.serve(async (req) => {
   try {
     const result = await sendNotifications();

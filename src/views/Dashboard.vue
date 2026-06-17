@@ -61,10 +61,10 @@ function checkVencimientosHoy() {
   if (vencenHoy.length > 0) {
     const nombres = vencenHoy.map(d => d.nombre).join(', ')
     const msg = `Tienes ${vencenHoy.length} cuota(s) que vencen HOY: ${nombres}`
+    
+    // Solo mostramos la notificación Toast en la UI.
+    // La notificación nativa del celular/PC ahora es responsabilidad exclusiva del Edge Function (Push real).
     notificationsStore.info(`📅 ¡Aviso! ${msg}`, 12000)
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification('Meta Cero - Recordatorio', { body: msg })
-    }
   }
 }
 
