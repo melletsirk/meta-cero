@@ -80,8 +80,8 @@ const handleSubmit = async () => {
   saving.value = true
   try {
     await perfilStore.savePerfil({
-      ingreso_mensual:    form.value.ingreso_mensual    ? Number(form.value.ingreso_mensual)    : null,
-      gasto_mensual_fijo: form.value.gasto_mensual_fijo ? Number(form.value.gasto_mensual_fijo) : null,
+      ingreso_mensual:    form.value.ingreso_mensual    ? Number(Number(form.value.ingreso_mensual).toFixed(2))    : null,
+      gasto_mensual_fijo: form.value.gasto_mensual_fijo ? Number(Number(form.value.gasto_mensual_fijo).toFixed(2)) : null,
       meta_cero_activa:   form.value.meta_cero_activa,
       fecha_meta_objetivo: form.value.fecha_meta_objetivo || null,
       moneda_preferida:   form.value.moneda_preferida,
