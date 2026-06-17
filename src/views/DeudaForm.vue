@@ -1,11 +1,10 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useDeudasStore } from '../stores/deudas'
 import { useNotificationsStore } from '../stores/notifications'
 import { calcularTasaPeriodica, alertaTEA, simboloMoneda, FRECUENCIAS, generarCronogramaFrances } from '../lib/finanzas'
 import EditableCronogramaTable from '../components/EditableCronogramaTable.vue'
-import { watch, onMounted } from 'vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -139,13 +138,13 @@ watch(
     if (!monto_original || !tasaUsada || (!num_cuotas && frecuencia_pago !== 'cuota_unica') || !fecha_inicio) {
       return
     }
-    
+
     try {
       const fechaParaPrimeraCuota = frecuencia_pago === 'cuota_unica'
         ? formData.value.fecha_vencimiento || formData.value.fecha_inicio
         : formData.value.fecha_primer_pago || formData.value.fecha_inicio
 
-      cuotasManuales.value = generarCronogramaFrances(
+      const nuevasCuotas = generarCronogramaFrances(
         Number(monto_original),
         Number(tasaUsada),
         Number(num_cuotas) || 1,
@@ -156,6 +155,16 @@ watch(
         Number(formData.value.base_calculo) || 365,
         formData.value.redondear_cuota
       )
+
+      // Preservar el estado 'pagada' que el usuario haya marcado previamente
+      // al recalcular el cronograma por cambios en los inputs.
+      const viejas = cuotasManuales.value || []
+      cuotasManuales.value = nuevasCuotas.map((nc, i) => {
+        if (viejas[i] && viejas[i].pagada) {
+          nc.pagada = true
+        }
+        return nc
+      })
     } catch {
       // Ignorar errores de cálculo en tiempo de escritura
     }
@@ -171,7 +180,7 @@ onMounted(async () => {
   if (isEditMode.value) {
     loading.value = true
     isInitializing.value = true
-    
+
     if (deudasStore.deudas.length === 0) {
       await deudasStore.fetchDeudas()
     }
@@ -184,7 +193,7 @@ onMounted(async () => {
       notificationsStore.error('Deuda no encontrada')
       router.push('/')
     }
-    
+
     setTimeout(() => {
       isInitializing.value = false
     }, 100)
@@ -220,7 +229,7 @@ const handleSubmit = async () => {
       tipo: formData.value.tipo,
       entidad: formData.value.entidad,
       moneda: formData.value.moneda,
-      monto_original: formData.value.monto_original,
+      monto_original: Number(Number(formData.value.monto_original).toFixed(2)),
       frecuencia_pago: formData.value.frecuencia_pago,
       fecha_inicio: formData.value.fecha_inicio,
       fecha_primer_pago: formData.value.fecha_primer_pago || null,
@@ -230,11 +239,10 @@ const handleSubmit = async () => {
       notas: formData.value.notas || null,
     }
 
-    // Asegurar que las cuotas a guardar tengan la marca de 'pagada' correcta
-    const pagadas = Number(formData.value.cuotas_pagadas) || 0
-    const finalCuotasGuardar = cuotasFinales.value.map((c, i) => ({
-      ...c,
-      pagada: i < pagadas
+    // Tomamos las cuotas exactamente como están en la tabla, respetando
+    // los clicks manuales del usuario en el checkbox de "pagada".
+    const finalCuotasGuardar = cuotasFinales.value.map((c) => ({
+      ...c
     }))
 
     if (isEditMode.value) {
@@ -266,10 +274,10 @@ const handleSubmit = async () => {
         </svg>
       </button>
       <div>
-          <h2 class="text-2xl font-extrabold text-slate-900 tracking-tight">
-            {{ isEditMode ? 'Editar Deuda' : 'Datos del Préstamo' }}
-          </h2>
-          <p class="text-lg text-slate-600 mt-1 font-medium">Llene los datos básicos de su deuda.</p>
+        <h2 class="text-2xl font-extrabold text-slate-900 tracking-tight">
+          {{ isEditMode ? 'Editar Deuda' : 'Datos del Préstamo' }}
+        </h2>
+        <p class="text-lg text-slate-600 mt-1 font-medium">Llene los datos básicos de su deuda.</p>
       </div>
     </div>
 
@@ -320,7 +328,7 @@ const handleSubmit = async () => {
                 class="absolute z-50 top-full mt-1 left-0 right-0 bg-white border border-slate-200 rounded-2xl shadow-xl shadow-slate-200/60 max-h-64 overflow-y-auto">
                 <div v-for="grupo in filteredEntidades" :key="grupo.grupo">
                   <div class="px-4 pt-3 pb-1 text-xs font-bold text-slate-400 uppercase tracking-wider">{{ grupo.grupo
-                  }}</div>
+                    }}</div>
                   <button v-for="entidad in grupo.items" :key="entidad" type="button"
                     @mousedown.prevent="selectEntidad(entidad)"
                     class="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors font-medium">
@@ -397,7 +405,7 @@ const handleSubmit = async () => {
               Original</label>
             <div class="relative">
               <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">{{ prefijo
-              }}</span>
+                }}</span>
               <input id="deuda-monto-original" v-model.number="formData.monto_original" type="number" step="0.01"
                 required min="0"
                 class="w-full border border-slate-200 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 pl-8 p-2.5 text-base bg-white/70 backdrop-blur-sm transition-all hover:bg-white"
@@ -409,7 +417,7 @@ const handleSubmit = async () => {
           <div class="group">
             <label
               class="block text-sm font-bold text-slate-700 mb-1 group-focus-within:text-indigo-600 transition-colors">Fecha
-              de Inicio</label>
+              de Inicio (Desembolso)</label>
             <input id="deuda-fecha-inicio" v-model="formData.fecha_inicio" type="date" required
               class="w-full border border-slate-200 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 p-2.5 text-base bg-white/70 backdrop-blur-sm transition-all hover:bg-white" />
           </div>
@@ -439,7 +447,7 @@ const handleSubmit = async () => {
                 class="block text-sm font-bold text-slate-800 mb-1 group-focus-within:text-indigo-600 transition-colors">
                 ¿En cuántas cuotas lo va a pagar?
                 <span class="text-xs text-slate-500 font-normal ml-1">({{ FRECUENCIAS[formData.frecuencia_pago]?.label
-                }})</span>
+                  }})</span>
               </label>
               <input id="deuda-num-cuotas" v-model.number="formData.num_cuotas" type="number" :required="!esCuotaUnica"
                 min="1"
