@@ -9,6 +9,7 @@ const router = useRouter()
 const notificationsStore = useNotificationsStore()
 
 const isRegistering = ref(false)
+const isForgot = ref(false)
 const email = ref('')
 const password = ref('')
 const nombres = ref('')
@@ -18,7 +19,11 @@ const loading = ref(false)
 const handleSubmit = async () => {
   loading.value = true
   try {
-    if (isRegistering.value) {
+    if (isForgot.value) {
+      await authStore.resetPassword(email.value)
+      notificationsStore.success('Te hemos enviado un correo de recuperación. Revisa tu bandeja de entrada.', 8000)
+      isForgot.value = false
+    } else if (isRegistering.value) {
       const fullName = `${nombres.value.trim()} ${apellidos.value.trim()}`
       const data = await authStore.signUp(email.value, password.value, fullName)
       if (data.user && data.user.identities && data.user.identities.length === 0) {
@@ -34,7 +39,14 @@ const handleSubmit = async () => {
     } else {
       await authStore.signIn(email.value, password.value)
       notificationsStore.success('Inicio de sesión exitoso')
-      router.push('/')
+      
+      // Intentamos enrutar con Vue Router
+      const navResult = await router.push('/')
+      
+      // Si Vue Router abortó la transición (glitch de layout), forzamos recarga
+      if (navResult) {
+        window.location.href = '/'
+      }
     }
   } catch (error) {
     notificationsStore.error(error.message || 'Error de autenticación')
@@ -83,24 +95,32 @@ const handleSubmit = async () => {
           <input id="email" v-model="email" type="email" required class="block w-full border-slate-200 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-base p-3.5 bg-white/70 backdrop-blur-sm transition-all hover:bg-white" placeholder="tu@correo.com" />
         </div>
 
-        <div class="group">
-          <label for="password" class="block text-sm font-semibold text-slate-700 mb-2 group-focus-within:text-indigo-600 transition-colors">Contraseña</label>
-          <input id="password" v-model="password" type="password" required class="block w-full border-slate-200 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-base p-3.5 bg-white/70 backdrop-blur-sm transition-all hover:bg-white" placeholder="••••••••" />
-        </div>
-
-
+        <transition name="fade">
+          <div v-if="!isForgot" class="group">
+            <div class="flex justify-between items-center mb-2">
+              <label for="password" class="block text-sm font-semibold text-slate-700 group-focus-within:text-indigo-600 transition-colors">Contraseña</label>
+              <button v-if="!isRegistering" type="button" @click="isForgot = true" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">
+                ¿Olvidaste tu contraseña?
+              </button>
+            </div>
+            <input id="password" v-model="password" type="password" :required="!isForgot" class="block w-full border-slate-200 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-base p-3.5 bg-white/70 backdrop-blur-sm transition-all hover:bg-white" placeholder="••••••••" />
+          </div>
+        </transition>
 
         <button type="submit" :disabled="loading" class="w-full flex justify-center items-center gap-2 py-3.5 px-4 border border-transparent rounded-xl shadow-lg shadow-indigo-500/30 text-base font-bold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transform transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed">
           <svg v-if="loading" class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          {{ isRegistering ? 'Crear mi cuenta' : 'Iniciar sesión' }}
+          {{ isForgot ? 'Enviar enlace de recuperación' : (isRegistering ? 'Crear mi cuenta' : 'Iniciar sesión') }}
         </button>
       </form>
 
       <div class="mt-8 text-center border-t border-slate-200/50 pt-6">
-        <button type="button" @click="isRegistering = !isRegistering" class="text-sm text-slate-500 hover:text-indigo-600 font-semibold transition-colors">
+        <button v-if="isForgot" type="button" @click="isForgot = false; isRegistering = false" class="text-sm text-slate-500 hover:text-indigo-600 font-semibold transition-colors">
+          Volver a iniciar sesión
+        </button>
+        <button v-else type="button" @click="isRegistering = !isRegistering" class="text-sm text-slate-500 hover:text-indigo-600 font-semibold transition-colors">
           {{ isRegistering ? '¿Ya tienes una cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate aquí' }}
         </button>
       </div>

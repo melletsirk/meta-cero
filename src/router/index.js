@@ -15,6 +15,11 @@ const routes = [
     meta: { requiresGuest: true }
   },
   {
+    path: '/reset-password',
+    name: 'ResetPassword',
+    component: () => import('../views/ResetPassword.vue')
+  },
+  {
     path: '/deudas/nueva',
     name: 'NuevaDeuda',
     component: () => import('../views/DeudaForm.vue'),
@@ -36,6 +41,12 @@ const routes = [
     path: '/calendario',
     name: 'CalendarioMensual',
     component: () => import('../views/CalendarioMensual.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/atrasadas',
+    name: 'CuotasAtrasadas',
+    component: () => import('../views/CuotasAtrasadas.vue'),
     meta: { requiresAuth: true }
   },
   {

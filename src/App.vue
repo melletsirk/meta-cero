@@ -14,8 +14,8 @@ onMounted(() => {
 <template>
   <div class="min-h-screen bg-slate-50 text-slate-900">
     <ToastNotification />
-    <!-- Si está autenticado, usar el layout principal. Si no, mostrar la vista sola (ej: Login) -->
-    <AppLayout v-if="authStore.user">
+    <!-- Usar el layout principal solo si la ruta actual lo requiere -->
+    <AppLayout v-if="$route.meta.requiresAuth">
       <router-view />
     </AppLayout>
     <router-view v-else />
