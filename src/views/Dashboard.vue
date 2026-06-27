@@ -59,12 +59,37 @@ function checkVencimientosHoy() {
   }
 
   if (vencenHoy.length > 0) {
-    const nombres = vencenHoy.map(d => d.nombre).join(', ')
-    const msg = `Tienes ${vencenHoy.length} cuota(s) que vencen HOY: ${nombres}`
-    
-    // Solo mostramos la notificación Toast en la UI.
-    // La notificación nativa del celular/PC ahora es responsabilidad exclusiva del Edge Function (Push real).
-    notificationsStore.info(`📅 ¡Aviso! ${msg}`, 12000)
+    if (!sessionStorage.getItem('vencimientos_notified')) {
+      sessionStorage.setItem('vencimientos_notified', 'true')
+      
+      const nombres = vencenHoy.map(d => d.nombre).join(', ')
+      const msg = `Tienes ${vencenHoy.length} cuota(s) que vencen HOY: ${nombres}`
+      
+      // Notificación en la app (Toast)
+      notificationsStore.info(`📅 ¡Aviso! ${msg}`, 12000)
+
+      // Notificación nativa (Push local)
+      if ('Notification' in window && Notification.permission === 'granted') {
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.ready.then(reg => {
+            reg.showNotification('¡Cuotas vencen hoy!', {
+              body: msg,
+              icon: '/favicon.svg',
+              badge: '/favicon.svg',
+              tag: 'vencimientos-hoy',
+              data: { url: '/' }
+            })
+          }).catch(err => {
+            console.warn('Error al mostrar push local:', err)
+          })
+        } else {
+          new Notification('¡Cuotas vencen hoy!', {
+            body: msg,
+            icon: '/favicon.svg'
+          })
+        }
+      }
+    }
   }
 }
 
