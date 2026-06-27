@@ -223,9 +223,20 @@ const handleEliminar = async (id) => {
       </div>
 
       <!-- Lista -->
+      <div v-else-if="deudasStore.deudasVisibles.length === 0"
+        class="text-center py-16 px-4 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
+        <div class="bg-white p-4 rounded-full inline-block mb-4 shadow-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
+        </div>
+        <h3 class="text-lg font-bold text-slate-900 mb-1">¡Todo pagado!</h3>
+        <p class="text-slate-500 max-w-sm mx-auto mb-6">No tienes deudas activas en este momento.</p>
+      </div>
+
       <div v-else class="space-y-4">
         <div
-          v-for="(deuda, index) in deudasStore.deudas"
+          v-for="(deuda, index) in deudasStore.deudasVisibles"
           :key="deuda.id"
           @click="goDetalle(deuda.id)"
           class="group flex flex-col sm:flex-row justify-between items-start sm:items-center p-5 bg-white/60 border border-slate-100 rounded-2xl hover:bg-white hover:shadow-md transition-all cursor-pointer animate-slide-up"

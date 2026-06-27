@@ -28,6 +28,14 @@ export const useDeudasStore = defineStore('deudas', () => {
     deudas.value.filter(d => d.estado === 'activa')
   )
 
+  const deudasVisibles = computed(() =>
+    deudas.value.filter(d => d.estado !== 'cerrada')
+  )
+
+  const deudasCerradas = computed(() =>
+    deudas.value.filter(d => d.estado === 'cerrada')
+  )
+
   const proximosVencimientos = computed(() => {
     return [...deudasActivas.value]
       .filter(d => d.fecha_proxima_cuota)
@@ -53,7 +61,34 @@ export const useDeudasStore = defineStore('deudas', () => {
 
       if (resumenError) throw resumenError
 
-      deudas.value = (resumenData || []).map(d => ({ ...d, id: d.deuda_id }))
+      const procesadas = (resumenData || []).map(d => ({ ...d, id: d.deuda_id }))
+      
+      // AUTO-REPARACIÓN DE ESTADOS:
+      // Deudas legacy que se pagaron antes del sistema de cierre automático
+      const paraCerrar = procesadas.filter(d => 
+        d.estado !== 'cerrada' && 
+        d.total_cuotas > 0 && 
+        d.cuotas_pendientes === 0
+      )
+      
+      if (paraCerrar.length > 0) {
+        const ids = paraCerrar.map(d => d.id)
+        // Disparar actualización en background a la DB
+        supabase
+          .from('deudas')
+          .update({ estado: 'cerrada', fecha_cierre: new Date().toISOString().split('T')[0] })
+          .in('id', ids)
+          .then(() => {
+            console.log(`Auto-cerradas ${ids.length} deudas atascadas.`)
+          })
+          
+        // Corregir el estado en memoria para que se aplique instantáneamente en la UI
+        paraCerrar.forEach(d => {
+          d.estado = 'cerrada'
+        })
+      }
+
+      deudas.value = procesadas
 
     } catch (error) {
       console.error('Error fetching deudas:', error)
@@ -374,6 +409,29 @@ export const useDeudasStore = defineStore('deudas', () => {
         }
       }
 
+      // Cerrar o reabrir deuda automáticamente según cuotas pagadas
+      const cuotasAct = cuotasPorDeuda.value[deuda.id] || []
+      if (cuotasAct.length > 0) {
+        const todasPagadas = cuotasAct.every(c => c.pagada)
+        let nuevoEstado = deuda.estado
+        let nuevaFechaCierre = deuda.fecha_cierre
+
+        if (todasPagadas && deuda.estado !== 'cerrada') {
+          nuevoEstado = 'cerrada'
+          nuevaFechaCierre = new Date().toISOString().split('T')[0]
+        } else if (!todasPagadas && deuda.estado === 'cerrada') {
+          nuevoEstado = 'activa'
+          nuevaFechaCierre = null
+        }
+
+        if (nuevoEstado !== deuda.estado) {
+          await supabase
+            .from('deudas')
+            .update({ estado: nuevoEstado, fecha_cierre: nuevaFechaCierre })
+            .eq('id', deuda.id)
+        }
+      }
+
       // Sync final en background (silencioso para evitar destellos)
       await fetchDeudas(true)
       await fetchCuotaTotalMes()
@@ -397,6 +455,8 @@ export const useDeudasStore = defineStore('deudas', () => {
     deudaTotal,
     cuotaTotalMes,
     deudasActivas,
+    deudasVisibles,
+    deudasCerradas,
     proximosVencimientos,
     fetchDeudas,
     fetchCuotaTotalMes,
