@@ -57,7 +57,7 @@ async function cargarCuotasMes(silent = false) {
     deudasStore.deudas.forEach(d => { deudasMap[d.id] = d })
 
     const cuotas = await deudasStore.fetchCalendario(anioActual.value, mesActual.value)
-    
+
     todasLasCuotas.value = cuotas.map(c => ({
       ...c,
       deuda: deudasMap[c.deuda_id] || null,
@@ -179,8 +179,8 @@ function formatMonto(monto, moneda) {
 function esHoy(fechaStr) {
   const f = new Date(fechaStr + 'T12:00:00')
   return (
-    f.getDate()     === hoy.getDate()     &&
-    f.getMonth()    === hoy.getMonth()    &&
+    f.getDate() === hoy.getDate() &&
+    f.getMonth() === hoy.getMonth() &&
     f.getFullYear() === hoy.getFullYear()
   )
 }
@@ -293,20 +293,23 @@ function esPasado(fechaStr) {
       <table class="w-full text-sm block sm:table">
         <thead class="hidden sm:table-header-group bg-indigo-50 border-b-2 border-indigo-100">
           <tr class="text-indigo-900">
-            <th class="px-4 py-4 text-left text-sm font-extrabold uppercase tracking-wider rounded-tl-2xl">Fecha de Pago</th>
+            <th class="px-4 py-4 text-left text-sm font-extrabold uppercase tracking-wider rounded-tl-2xl">Fecha de Pago
+            </th>
             <th class="px-4 py-4 text-left text-sm font-extrabold uppercase tracking-wider">Préstamo</th>
             <th class="px-4 py-4 text-center text-sm font-extrabold uppercase tracking-wider">N° Cuota</th>
             <th class="px-4 py-4 text-right text-sm font-extrabold uppercase tracking-wider">Monto de Cuota</th>
             <th class="px-4 py-4 text-center text-sm font-extrabold uppercase tracking-wider rounded-tr-2xl">Pago</th>
           </tr>
         </thead>
-        <tbody class="block sm:table-row-group divide-y-0 sm:divide-y sm:divide-slate-100 space-y-2 sm:space-y-0 p-2 sm:p-0">
-          <tr v-for="cuota in todasLasCuotas" :key="cuota.id" 
+        <tbody
+          class="block sm:table-row-group divide-y-0 sm:divide-y sm:divide-slate-100 space-y-2 sm:space-y-0 p-2 sm:p-0">
+          <tr v-for="cuota in todasLasCuotas" :key="cuota.id"
             class="block sm:table-row bg-white sm:bg-transparent rounded-xl border sm:border-0 border-slate-200 shadow-sm sm:shadow-none p-2.5 sm:p-0 transition-colors sm:hover:bg-slate-50 relative"
             :class="{ 'opacity-60': cuota.pagada, 'border-red-200 bg-red-50/20': !cuota.pagada && esPasado(cuota.fecha) }">
 
             <!-- Fecha de Pago -->
-            <td class="flex sm:table-cell justify-between items-center sm:px-4 sm:py-4 border-b sm:border-0 border-slate-100 pb-1.5 sm:pb-0 mb-1.5 sm:mb-0">
+            <td
+              class="flex sm:table-cell justify-between items-center sm:px-4 sm:py-4 border-b sm:border-0 border-slate-100 pb-1.5 sm:pb-0 mb-1.5 sm:mb-0">
               <span class="sm:hidden text-[10px] font-bold text-slate-400 uppercase tracking-widest">Fecha</span>
               <div class="text-right sm:text-left flex items-center gap-2">
                 <span class="font-extrabold text-sm sm:text-base block sm:inline"
@@ -323,10 +326,13 @@ function esPasado(fechaStr) {
             <!-- Préstamo y Cuota combinados visualmente -->
             <td class="flex sm:table-cell justify-between items-center sm:px-4 sm:py-4 py-0.5">
               <div class="flex items-center gap-1.5">
-                <div class="shrink-0 w-2 h-2 sm:w-3 sm:h-3 rounded-full" :class="colorPorDeuda[cuota.deuda?.id]?.dot || 'bg-slate-400'"></div>
+                <div class="shrink-0 w-2 h-2 sm:w-3 sm:h-3 rounded-full"
+                  :class="colorPorDeuda[cuota.deuda?.id]?.dot || 'bg-slate-400'"></div>
                 <p class="font-bold text-slate-800 text-sm sm:text-base leading-none">
                   {{ cuota.deuda?.nombre || 'Sin nombre' }}
-                  <span class="sm:hidden text-slate-400 font-normal text-xs ml-1">(Cuota {{ cuota.numero }})</span>
+                  <span class="sm:hidden text-slate-400 font-normal text-xs ml-1">
+                    (Cuota {{ cuota.numero }}/{{ cuota.deuda?.total_cuotas || '?' }})
+                  </span>
                 </p>
               </div>
               <p class="hidden sm:block text-sm text-slate-500 font-medium">{{ cuota.deuda?.entidad }}</p>
@@ -334,27 +340,27 @@ function esPasado(fechaStr) {
 
             <!-- N° Cuota (Solo Desktop) -->
             <td class="hidden sm:table-cell px-4 py-4 text-center text-sm font-medium text-slate-500">
-              {{ cuota.numero }}
+              {{ cuota.numero }} / {{ cuota.deuda?.total_cuotas || '?' }}
             </td>
 
             <!-- Monto y Pagar -->
-            <td class="flex sm:table-cell justify-between items-center sm:px-4 sm:py-4 pt-1.5 mt-1.5 border-t sm:border-0 border-slate-100">
+            <td
+              class="flex sm:table-cell justify-between items-center sm:px-4 sm:py-4 pt-1.5 mt-1.5 border-t sm:border-0 border-slate-100">
               <span class="font-extrabold text-slate-900 text-base sm:text-base"
                 :class="{ 'line-through text-slate-400': cuota.pagada }">
                 {{ formatMonto(cuota.total, cuota.deuda?.moneda) }}
               </span>
               <div class="sm:hidden">
-                <button
-                  @click="togglePagada(cuota)"
-                  :disabled="toggling[cuota.id]"
-                  class="w-8 h-8 rounded-full border flex items-center justify-center transition-all"
-                  :class="cuota.pagada
+                <button @click="togglePagada(cuota)" :disabled="toggling[cuota.id]"
+                  class="w-8 h-8 rounded-full border flex items-center justify-center transition-all" :class="cuota.pagada
                     ? 'bg-emerald-500 border-emerald-500 text-white shadow-sm'
                     : 'bg-indigo-50 border-indigo-200 text-indigo-600'">
-                  <svg v-if="!toggling[cuota.id]" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg v-if="!toggling[cuota.id]" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                    viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
                   </svg>
-                  <svg v-else class="animate-spin h-4 w-4 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <svg v-else class="animate-spin h-4 w-4 text-current" xmlns="http://www.w3.org/2000/svg" fill="none"
+                    viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                   </svg>
@@ -364,17 +370,16 @@ function esPasado(fechaStr) {
 
             <!-- Pago (Solo Desktop) -->
             <td class="hidden sm:table-cell px-4 py-4 text-center">
-              <button
-                @click="togglePagada(cuota)"
-                :disabled="toggling[cuota.id]"
-                class="w-8 h-8 mx-auto rounded-full border-2 flex items-center justify-center transition-all"
-                :class="cuota.pagada
+              <button @click="togglePagada(cuota)" :disabled="toggling[cuota.id]"
+                class="w-8 h-8 mx-auto rounded-full border-2 flex items-center justify-center transition-all" :class="cuota.pagada
                   ? 'bg-emerald-500 border-emerald-500 text-white shadow-sm'
                   : 'border-slate-300 text-transparent hover:border-emerald-400 hover:text-emerald-400'">
-                <svg v-if="!toggling[cuota.id]" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg v-if="!toggling[cuota.id]" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                  viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
                 </svg>
-                <svg v-else class="animate-spin h-4 w-4 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <svg v-else class="animate-spin h-4 w-4 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none"
+                  viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                 </svg>

@@ -212,14 +212,18 @@ function diasAtraso(fechaStr) {
                 <div class="hidden sm:block shrink-0 w-3 h-3 rounded-full" :class="colorPorDeuda[cuota.deuda?.id]?.dot || 'bg-slate-400'"></div>
                 <p class="font-bold text-slate-800 text-sm sm:text-base leading-none">
                   {{ cuota.deuda?.nombre || cuota.nombre_deuda || 'Sin nombre' }}
-                  <span class="sm:hidden text-slate-400 font-normal text-xs ml-1">(Cuota {{ cuota.numero }})</span>
+                  <span class="sm:hidden text-slate-400 font-normal text-xs ml-1">
+                    (Cuota {{ cuota.numero }}/{{ cuota.deuda?.total_cuotas || '?' }})
+                  </span>
                 </p>
               </div>
               <p class="hidden sm:block text-sm text-slate-500 font-medium">{{ cuota.deuda?.entidad || cuota.entidad }}</p>
             </td>
 
             <!-- N° Cuota (Solo Desktop) -->
-            <td class="hidden sm:table-cell px-4 py-4 text-center font-bold text-slate-500">{{ cuota.numero }}</td>
+            <td class="hidden sm:table-cell px-4 py-4 text-center font-bold text-slate-500">
+              {{ cuota.numero }} / {{ cuota.deuda?.total_cuotas || '?' }}
+            </td>
 
             <!-- Atraso (Solo Desktop) -->
             <td class="hidden sm:table-cell px-4 py-4 text-center">
