@@ -52,7 +52,7 @@ self.addEventListener('push', (event) => {
     icon: '/favicon.svg',
     badge: '/favicon.svg',
     tag: payload.tag || 'meta-cero-notification',   // agrupa notificaciones del mismo tipo
-    renotify: false,                                  // no vibrar si ya hay una del mismo tag
+    renotify: true,                                   // VIBRAR/SONAR aunque ya haya una notificación previa
     requireInteraction: false,
     data: {
       url: payload.url || '/'
