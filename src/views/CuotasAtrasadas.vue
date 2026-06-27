@@ -58,6 +58,8 @@ async function cargarVencidas(silent = false) {
 
     cuotasVencidas.value = data.map(c => ({
       ...c,
+      id: c.cuota_id,
+      numero: c.numero_cuota,
       deuda: deudasMap[c.deuda_id] || null,
     }))
   } catch (e) {
