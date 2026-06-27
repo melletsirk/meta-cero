@@ -97,6 +97,27 @@ export const useDeudasStore = defineStore('deudas', () => {
     }
   }
 
+  // Fetch explícito para el historial (saltando v_resumen_deudas por si excluye las cerradas)
+  const historialCerradas = ref([])
+  async function fetchHistorial() {
+    if (!authStore.user) return
+    loading.value = true
+    try {
+      const { data, error } = await supabase
+        .from('deudas')
+        .select('*')
+        .eq('estado', 'cerrada')
+        .order('fecha_cierre', { ascending: false, nullsFirst: false })
+      
+      if (error) throw error
+      historialCerradas.value = data || []
+    } catch (error) {
+      console.error('Error fetching historial:', error)
+    } finally {
+      loading.value = false
+    }
+  }
+
   // Calcula el total de cuotas pendientes del mes actual consultando v_cronograma_consolidado.
   async function fetchCuotaTotalMes() {
     if (!authStore.user) return
@@ -457,8 +478,10 @@ export const useDeudasStore = defineStore('deudas', () => {
     deudasActivas,
     deudasVisibles,
     deudasCerradas,
+    historialCerradas,
     proximosVencimientos,
     fetchDeudas,
+    fetchHistorial,
     fetchCuotaTotalMes,
     fetchCalendario,
     addDeuda,

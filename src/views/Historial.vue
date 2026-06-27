@@ -12,9 +12,7 @@ const formatMonto = (monto, moneda) => formatearMoneda(Number(monto) || 0, moned
 const goDetalle = (id) => router.push(`/deudas/${id}`)
 
 onMounted(() => {
-  if (deudasStore.deudas.length === 0) {
-    deudasStore.fetchDeudas()
-  }
+  deudasStore.fetchHistorial()
 })
 </script>
 
@@ -39,7 +37,7 @@ onMounted(() => {
       </div>
 
       <!-- Vacío -->
-      <div v-else-if="deudasStore.deudasCerradas.length === 0"
+      <div v-else-if="deudasStore.historialCerradas.length === 0"
         class="text-center py-16 px-4 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
         <div class="bg-emerald-100 p-4 rounded-full inline-block mb-4 shadow-sm">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -53,7 +51,7 @@ onMounted(() => {
       <!-- Lista -->
       <div v-else class="space-y-4">
         <div
-          v-for="(deuda, index) in deudasStore.deudasCerradas"
+          v-for="(deuda, index) in deudasStore.historialCerradas"
           :key="deuda.id"
           @click="goDetalle(deuda.id)"
           class="group flex flex-col sm:flex-row justify-between items-start sm:items-center p-5 bg-white/60 border border-slate-100 rounded-2xl hover:bg-white hover:shadow-md transition-all cursor-pointer opacity-75 hover:opacity-100 grayscale hover:grayscale-0">
