@@ -188,84 +188,97 @@ const handlePagoClick = (cuota, idx) => {
             <th class="px-4 py-3 text-center text-xs font-extrabold uppercase tracking-wider rounded-tr-2xl w-20">Pago</th>
           </tr>
         </thead>
-        <tbody class="block sm:table-row-group divide-y-0 sm:divide-y sm:divide-slate-100 bg-transparent space-y-4 sm:space-y-0 p-2 sm:p-0">
+        <tbody class="block sm:table-row-group divide-y-0 sm:divide-y sm:divide-slate-100 bg-transparent space-y-2 sm:space-y-0 p-2 sm:p-0">
           <tr v-for="(cuota, idx) in cuotas" :key="cuota.id || cuota.numero || idx"
-            class="block sm:table-row bg-white sm:bg-transparent rounded-2xl border sm:border-0 border-slate-200 shadow-sm sm:shadow-none p-4 sm:p-0 transition-colors group relative"
+            class="block sm:table-row bg-white sm:bg-transparent rounded-xl border sm:border-0 border-slate-200 shadow-sm sm:shadow-none p-2.5 sm:p-0 transition-colors group relative"
             :class="cuota.pagada ? 'bg-emerald-50/40' : 'sm:hover:bg-slate-50/70'">
             
-            <!-- N° -->
-            <td class="flex sm:table-cell justify-between items-center sm:px-4 sm:py-3 mb-3 sm:mb-0">
-              <span class="sm:hidden text-xs font-bold text-slate-400 uppercase">N° Cuota</span>
-              <span class="font-bold text-slate-600 text-base sm:text-center block sm:w-full">
+            <!-- N° y Fecha combinados -->
+            <td class="flex sm:table-cell justify-between items-center sm:px-4 sm:py-3 border-b sm:border-0 border-slate-100 pb-1.5 sm:pb-0 mb-1.5 sm:mb-0">
+              <span class="sm:hidden text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cuota {{ String(cuota.numero).padStart(2, '0') }}</span>
+              <span class="hidden sm:inline font-bold text-slate-600 text-xs text-center">
                 {{ String(cuota.numero).padStart(2, '0') }}
               </span>
-            </td>
-
-            <!-- Fecha -->
-            <td class="flex sm:table-cell justify-between items-center sm:px-3 sm:py-2 mb-3 sm:mb-0 border-t border-slate-100 sm:border-0 pt-3 sm:pt-0">
-              <span class="sm:hidden text-xs font-bold text-slate-400 uppercase">Fecha</span>
-              <div class="text-right sm:text-left w-1/2 sm:w-auto">
+              <div class="text-right sm:hidden">
                 <template v-if="readonly">
-                  <span class="text-base sm:text-lg font-bold block"
+                  <span class="text-sm font-bold block"
                     :class="cuota.pagada ? 'text-slate-500 line-through' : 'text-slate-700'">
                     {{ fmtFecha(cuota.fecha) }}
                   </span>
                 </template>
                 <template v-else>
                   <input type="date" :value="cuota.fecha" @input="e => updateCuota(idx, 'fecha', e.target.value)"
-                    class="w-full text-right sm:text-left border-0 bg-transparent text-base sm:text-lg text-slate-700 p-1 focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded" />
+                    class="w-full text-right border-0 bg-transparent text-sm text-slate-700 p-0 focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded" />
                 </template>
               </div>
             </td>
 
-            <!-- Monto de cuota -->
-            <td class="flex sm:table-cell justify-between items-center sm:px-3 sm:py-2 mb-3 sm:mb-0 border-t border-slate-100 sm:border-0 pt-3 sm:pt-0 text-right">
-              <span class="sm:hidden text-xs font-bold text-slate-400 uppercase">Monto</span>
-              <div>
+            <!-- Fecha (Solo Desktop) -->
+            <td class="hidden sm:table-cell sm:px-3 sm:py-2">
+              <template v-if="readonly">
+                <span class="text-sm font-bold block"
+                  :class="cuota.pagada ? 'text-slate-500 line-through' : 'text-slate-700'">
+                  {{ fmtFecha(cuota.fecha) }}
+                </span>
+              </template>
+              <template v-else>
+                <input type="date" :value="cuota.fecha" @input="e => updateCuota(idx, 'fecha', e.target.value)"
+                  class="w-full text-left border-0 bg-transparent text-sm text-slate-700 p-1 focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded" />
+              </template>
+            </td>
+
+            <!-- Saldo pendiente y Cuota combinados -->
+            <td class="flex sm:table-cell justify-between items-center sm:px-3 sm:py-2 py-0.5">
+              <div class="sm:hidden flex flex-col">
+                <span class="text-[10px] font-bold text-slate-400 uppercase">Restante</span>
+                <span class="text-xs font-bold"
+                  :class="cuota.pagada ? 'text-slate-400 line-through' : (saldosConIntereses[idx] === 0 ? 'text-emerald-600' : 'text-slate-600')">
+                  {{ fmt(saldosConIntereses[idx]) }}
+                </span>
+              </div>
+              <div class="text-right sm:text-right w-full sm:w-auto">
                 <template v-if="readonly">
-                  <span class="text-xl sm:text-lg font-extrabold sm:font-bold"
+                  <span class="text-base sm:text-sm font-extrabold sm:font-bold"
                     :class="cuota.pagada ? 'text-slate-400 line-through' : 'text-slate-900'">
                     {{ fmt(cuota.total) }}
                   </span>
                 </template>
                 <template v-else>
                   <div class="relative flex items-center justify-end">
-                    <span class="text-slate-400 text-base sm:text-lg font-bold mr-1">{{ prefijo }}</span>
+                    <span class="text-slate-400 text-sm font-bold mr-1">{{ prefijo }}</span>
                     <input type="number" step="0.01" :value="cuota.total"
                       @input="e => updateCuota(idx, 'total', Number(e.target.value))"
-                      class="w-24 sm:w-24 text-right border-0 bg-transparent text-xl sm:text-lg font-extrabold sm:font-bold text-slate-900 p-1 focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded" />
+                      class="w-20 text-right border-0 bg-transparent text-base sm:text-sm font-extrabold sm:font-bold text-slate-900 p-0 sm:p-1 focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded" />
                   </div>
                 </template>
               </div>
             </td>
 
-            <!-- Saldo pendiente con intereses -->
-            <td class="flex sm:table-cell justify-between items-center sm:px-3 sm:py-2 mb-4 sm:mb-0 border-t border-slate-100 sm:border-0 pt-3 sm:pt-0 text-right">
-              <span class="sm:hidden text-xs font-bold text-slate-400 uppercase">Saldo Restante</span>
-              <span class="text-base sm:text-lg font-bold"
+            <!-- Saldo pendiente con intereses (Solo Desktop) -->
+            <td class="hidden sm:table-cell px-3 py-2 text-right">
+              <span class="text-sm font-bold"
                 :class="cuota.pagada ? 'text-slate-400 line-through' : (saldosConIntereses[idx] === 0 ? 'text-emerald-600' : 'text-slate-600')">
                 {{ fmt(saldosConIntereses[idx]) }}
               </span>
             </td>
 
-            <!-- Pago -->
-            <td class="flex sm:table-cell justify-center sm:px-3 sm:py-2 border-t border-slate-100 sm:border-0 pt-4 sm:pt-0 text-center relative">
+            <!-- Boton Pago -->
+            <td class="flex sm:table-cell justify-end sm:justify-center sm:px-3 sm:py-2 pt-1 mt-1 sm:pt-0 sm:mt-0 border-t sm:border-0 border-slate-100 text-center relative">
               <div v-if="togglingId === cuota.id"
-                class="absolute inset-0 flex items-center justify-center bg-white/50 backdrop-blur-sm rounded-xl sm:rounded-none z-10">
-                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
+                class="absolute inset-0 flex items-center justify-center bg-white/50 backdrop-blur-sm rounded z-10">
+                <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600"></div>
               </div>
               <button type="button" @click="handlePagoClick(cuota, idx)"
-                class="w-full sm:w-8 h-12 sm:h-8 mx-auto rounded-xl sm:rounded-full border-2 flex items-center justify-center gap-2 font-bold transition-all relative z-20" 
+                class="w-8 h-8 rounded-full border flex items-center justify-center transition-all relative z-20 sm:mx-auto" 
                 :class="cuota.pagada
-                  ? 'bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-200'
+                  ? 'bg-emerald-500 border-emerald-500 text-white shadow-sm'
                   : 'bg-indigo-50 border-indigo-100 text-indigo-600 hover:border-indigo-300'" :disabled="togglingId === cuota.id"
                 :aria-label="cuota.pagada ? 'Desmarcar cuota' : 'Marcar como pagada'">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 sm:h-4 sm:w-4" viewBox="0 0 20 20" fill="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                   <path fill-rule="evenodd"
                     d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
                     clip-rule="evenodd" />
                 </svg>
-                <span class="sm:hidden">{{ cuota.pagada ? 'Pagado' : 'Marcar Pago' }}</span>
               </button>
             </td>
           </tr>
