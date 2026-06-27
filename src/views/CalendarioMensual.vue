@@ -293,64 +293,64 @@ function esPasado(fechaStr) {
       <table class="min-w-full text-sm">
         <thead class="bg-indigo-50 border-b-2 border-indigo-100">
           <tr class="text-indigo-900">
-            <th class="px-4 py-4 text-left text-sm font-extrabold uppercase tracking-wider rounded-tl-2xl">Fecha de Pago
+            <th class="px-2 sm:px-4 py-3 sm:py-4 text-left text-[10px] sm:text-sm font-extrabold uppercase tracking-wider rounded-tl-2xl">Fecha
             </th>
-            <th class="px-4 py-4 text-left text-sm font-extrabold uppercase tracking-wider">Préstamo</th>
-            <th class="px-4 py-4 text-center text-sm font-extrabold uppercase tracking-wider">N° Cuota</th>
-            <th class="px-4 py-4 text-right text-sm font-extrabold uppercase tracking-wider">Monto de Cuota</th>
-            <th class="px-4 py-4 text-center text-sm font-extrabold uppercase tracking-wider rounded-tr-2xl">Pago</th>
+            <th class="px-2 sm:px-4 py-3 sm:py-4 text-left text-[10px] sm:text-sm font-extrabold uppercase tracking-wider">Préstamo</th>
+            <th class="hidden sm:table-cell px-4 py-4 text-center text-sm font-extrabold uppercase tracking-wider">N° Cuota</th>
+            <th class="px-2 sm:px-4 py-3 sm:py-4 text-right text-[10px] sm:text-sm font-extrabold uppercase tracking-wider">Monto</th>
+            <th class="px-2 sm:px-4 py-3 sm:py-4 text-center text-[10px] sm:text-sm font-extrabold uppercase tracking-wider rounded-tr-2xl">Pago</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100">
           <tr v-for="cuota in todasLasCuotas" :key="cuota.id" class="transition-colors hover:bg-slate-50"
             :class="{ 'opacity-60 bg-slate-50': cuota.pagada, 'bg-red-50/50': !cuota.pagada && esPasado(cuota.fecha) }">
 
-            <td class="px-4 py-4 whitespace-nowrap">
-              <span class="font-bold text-base"
+            <td class="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap">
+              <span class="font-bold text-xs sm:text-base block sm:inline"
                 :class="esHoy(cuota.fecha) ? 'text-indigo-600' : 'text-slate-700'">
                 {{ formatFecha(cuota.fecha) }}
               </span>
               <span v-if="esHoy(cuota.fecha)"
-                class="ml-2 px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs font-bold rounded-full">Hoy</span>
+                class="mt-1 sm:mt-0 sm:ml-2 px-2 py-0.5 bg-indigo-100 text-indigo-700 text-[10px] sm:text-xs font-bold rounded-full inline-block">Hoy</span>
               <span v-else-if="!cuota.pagada && esPasado(cuota.fecha)"
-                class="ml-2 px-2 py-0.5 bg-red-100 text-red-700 text-xs font-bold rounded-full">Vencida</span>
+                class="mt-1 sm:mt-0 sm:ml-2 px-2 py-0.5 bg-red-100 text-red-700 text-[10px] sm:text-xs font-bold rounded-full inline-block">Vencida</span>
             </td>
 
-            <td class="px-4 py-4">
+            <td class="px-2 sm:px-4 py-3 sm:py-4">
               <div class="flex items-center gap-2">
-                <div class="shrink-0 w-3 h-3 rounded-full"
+                <div class="hidden sm:block shrink-0 w-3 h-3 rounded-full"
                   :class="colorPorDeuda[cuota.deuda?.id]?.dot || 'bg-slate-400'"></div>
                 <div>
-                  <p class="font-bold text-slate-800 text-base">{{ cuota.deuda?.nombre || 'Sin nombre' }}</p>
-                  <p class="text-sm text-slate-500 font-medium">{{ cuota.deuda?.entidad }}</p>
+                  <p class="font-bold text-slate-800 text-xs sm:text-base">{{ cuota.deuda?.nombre || 'Sin nombre' }}</p>
+                  <p class="text-[10px] sm:text-sm text-slate-500 font-medium">{{ cuota.deuda?.entidad }}</p>
                 </div>
               </div>
             </td>
 
-            <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-slate-500">
+            <td class="hidden sm:table-cell px-4 py-4 text-center whitespace-nowrap text-sm font-medium text-slate-500">
               {{ cuota.numero }}
             </td>
 
-            <td class="px-4 py-4 text-right font-extrabold text-slate-900 text-base"
+            <td class="px-2 sm:px-4 py-3 sm:py-4 text-right font-extrabold text-slate-900 text-sm sm:text-base"
               :class="{ 'line-through text-slate-400': cuota.pagada }">
               {{ formatMonto(cuota.total, cuota.deuda?.moneda) }}
             </td>
 
-            <td class="px-4 py-4 text-center">
+            <td class="px-2 sm:px-4 py-3 sm:py-4 text-center">
               <button
                 @click="togglePagada(cuota)"
                 :disabled="toggling[cuota.id]"
-                class="w-8 h-8 mx-auto rounded-full border-2 flex items-center justify-center transition-all"
+                class="w-6 h-6 sm:w-8 sm:h-8 mx-auto rounded-full border-2 flex items-center justify-center transition-all"
                 :class="cuota.pagada
                   ? 'bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-200'
                   : 'border-slate-300 text-transparent hover:border-emerald-400 hover:text-emerald-400'"
                 :title="cuota.pagada ? 'Marcar como pendiente' : 'Marcar como pagada'"
                 :aria-label="cuota.pagada ? 'Desmarcar cuota' : 'Marcar cuota como pagada'">
-                <svg v-if="!toggling[cuota.id]" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                <svg v-if="!toggling[cuota.id]" xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 sm:h-4 sm:w-4" fill="none"
                   viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
                 </svg>
-                <svg v-else class="animate-spin h-4 w-4 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none"
+                <svg v-else class="animate-spin h-3 w-3 sm:h-4 sm:w-4 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none"
                   viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
