@@ -15,6 +15,13 @@ const router         = useRouter()
 // ── Estado local (independiente del store compartido) ──────────
 const loading  = ref(false)
 const hasError = ref(false)
+const searchQuery = ref('')
+
+const deudasFiltradas = computed(() => {
+  if (!searchQuery.value) return deudasStore.deudasVisibles
+  const q = searchQuery.value.toLowerCase()
+  return deudasStore.deudasVisibles.filter(d => d.nombre.toLowerCase().includes(q))
+})
 
 // ── Carga de datos ─────────────────────────────────────────────
 async function cargarDatos() {
@@ -183,7 +190,22 @@ const handleEliminar = async (id) => {
 
     <!-- ── Lista de deudas ── -->
     <div class="glass rounded-3xl shadow-sm border border-white/60 p-6 sm:p-8">
-      <h2 class="text-xl font-bold text-slate-900 mb-6">Mis Deudas</h2>
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <h2 class="text-xl font-bold text-slate-900">Mis Deudas</h2>
+        <div class="relative w-full sm:w-64">
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg class="h-4 w-4 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Buscar por nombre..."
+            class="block w-full pl-10 pr-3 py-2 border border-slate-200 rounded-xl leading-5 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all"
+          >
+        </div>
+      </div>
 
       <!-- Loading -->
       <div v-if="loading" class="text-center py-16">
@@ -222,7 +244,7 @@ const handleEliminar = async (id) => {
         </button>
       </div>
 
-      <!-- Lista -->
+      <!-- Todo Pagado -->
       <div v-else-if="deudasStore.deudasVisibles.length === 0"
         class="text-center py-16 px-4 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
         <div class="bg-white p-4 rounded-full inline-block mb-4 shadow-sm">
@@ -233,10 +255,16 @@ const handleEliminar = async (id) => {
         <h3 class="text-lg font-bold text-slate-900 mb-1">¡Todo pagado!</h3>
         <p class="text-slate-500 max-w-sm mx-auto mb-6">No tienes deudas activas en este momento.</p>
       </div>
+      
+      <!-- Búsqueda sin resultados -->
+      <div v-else-if="deudasFiltradas.length === 0"
+        class="text-center py-12 px-4 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
+        <p class="text-slate-500 font-medium">No se encontraron deudas con ese nombre.</p>
+      </div>
 
       <div v-else class="space-y-4">
         <div
-          v-for="(deuda, index) in deudasStore.deudasVisibles"
+          v-for="(deuda, index) in deudasFiltradas"
           :key="deuda.id"
           @click="goDetalle(deuda.id)"
           class="group flex flex-col sm:flex-row justify-between items-start sm:items-center p-5 bg-white/60 border border-slate-100 rounded-2xl hover:bg-white hover:shadow-md transition-all cursor-pointer animate-slide-up"
@@ -307,11 +335,17 @@ const handleEliminar = async (id) => {
                 <span>{{ deuda.cuotas_pagadas }}/{{ deuda.total_cuotas }} cuotas</span>
                 <span>{{ Math.round((deuda.cuotas_pagadas / deuda.total_cuotas) * 100) }}%</span>
               </div>
-              <div class="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+              <div class="h-1.5 bg-slate-100 rounded-full overflow-hidden mb-1.5">
                 <div class="h-full bg-indigo-500 rounded-full transition-all"
                   :style="{ width: `${Math.round((deuda.cuotas_pagadas / deuda.total_cuotas) * 100)}%` }">
                 </div>
               </div>
+              <p v-if="deuda.fecha_proxima_cuota" class="text-[10px] font-semibold text-right text-indigo-500 flex justify-end items-center gap-1">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Vence: {{ new Date(deuda.fecha_proxima_cuota + 'T12:00:00').toLocaleDateString('es-PE', { day: '2-digit', month: 'short' }) }}
+              </p>
             </div>
 
             <!-- Acciones -->
