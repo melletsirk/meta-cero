@@ -183,45 +183,45 @@ function diasAtraso(fechaStr) {
       <table class="min-w-full text-sm">
         <thead class="bg-red-50 border-b-2 border-red-100">
           <tr class="text-red-900">
-            <th class="px-4 py-4 text-left text-sm font-extrabold uppercase tracking-wider rounded-tl-2xl">Fecha de Pago</th>
-            <th class="px-4 py-4 text-left text-sm font-extrabold uppercase tracking-wider">Préstamo</th>
-            <th class="px-4 py-4 text-center text-sm font-extrabold uppercase tracking-wider">N° Cuota</th>
-            <th class="px-4 py-4 text-center text-sm font-extrabold uppercase tracking-wider">Atraso</th>
-            <th class="px-4 py-4 text-right text-sm font-extrabold uppercase tracking-wider">Monto Vencido</th>
-            <th class="px-4 py-4 text-center text-sm font-extrabold uppercase tracking-wider rounded-tr-2xl">Pagar</th>
+            <th class="px-2 sm:px-4 py-3 sm:py-4 text-left text-[10px] sm:text-sm font-extrabold uppercase tracking-wider rounded-tl-2xl">Fecha</th>
+            <th class="px-2 sm:px-4 py-3 sm:py-4 text-left text-[10px] sm:text-sm font-extrabold uppercase tracking-wider">Préstamo</th>
+            <th class="hidden sm:table-cell px-4 py-4 text-center text-sm font-extrabold uppercase tracking-wider">N° Cuota</th>
+            <th class="px-2 sm:px-4 py-3 sm:py-4 text-center text-[10px] sm:text-sm font-extrabold uppercase tracking-wider">Atraso</th>
+            <th class="px-2 sm:px-4 py-3 sm:py-4 text-right text-[10px] sm:text-sm font-extrabold uppercase tracking-wider">Monto</th>
+            <th class="px-2 sm:px-4 py-3 sm:py-4 text-center text-[10px] sm:text-sm font-extrabold uppercase tracking-wider rounded-tr-2xl">Pagar</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100">
           <tr v-for="cuota in cuotasVencidas" :key="cuota.id" class="transition-colors hover:bg-slate-50">
-            <td class="px-4 py-4 whitespace-nowrap">
-              <span class="font-bold text-slate-900 text-base">{{ formatFecha(cuota.fecha) }}</span>
+            <td class="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap">
+              <span class="font-bold text-slate-900 text-xs sm:text-base">{{ formatFecha(cuota.fecha) }}</span>
             </td>
-            <td class="px-4 py-4">
+            <td class="px-2 sm:px-4 py-3 sm:py-4">
               <div class="flex items-center gap-2">
-                <div class="shrink-0 w-3 h-3 rounded-full" :class="colorPorDeuda[cuota.deuda?.id]?.dot || 'bg-slate-400'"></div>
+                <div class="hidden sm:block shrink-0 w-3 h-3 rounded-full" :class="colorPorDeuda[cuota.deuda?.id]?.dot || 'bg-slate-400'"></div>
                 <div>
-                  <p class="font-bold text-slate-800 text-base">{{ cuota.deuda?.nombre || cuota.nombre_deuda || 'Sin nombre' }}</p>
-                  <p class="text-sm text-slate-500 font-medium">{{ cuota.deuda?.entidad || cuota.entidad }}</p>
+                  <p class="font-bold text-slate-800 text-xs sm:text-base">{{ cuota.deuda?.nombre || cuota.nombre_deuda || 'Sin nombre' }}</p>
+                  <p class="text-[10px] sm:text-sm text-slate-500 font-medium">{{ cuota.deuda?.entidad || cuota.entidad }}</p>
                 </div>
               </div>
             </td>
-            <td class="px-4 py-4 text-center font-bold text-slate-500">{{ cuota.numero }}</td>
-            <td class="px-4 py-4 text-center">
-              <span class="px-3 py-1 bg-red-100 text-red-700 text-xs font-extrabold rounded-full">
+            <td class="hidden sm:table-cell px-4 py-4 text-center font-bold text-slate-500">{{ cuota.numero }}</td>
+            <td class="px-2 sm:px-4 py-3 sm:py-4 text-center">
+              <span class="px-2 sm:px-3 py-0.5 sm:py-1 bg-red-100 text-red-700 text-[10px] sm:text-xs font-extrabold rounded-full whitespace-nowrap">
                 Hace {{ diasAtraso(cuota.fecha) }} días
               </span>
             </td>
-            <td class="px-4 py-4 text-right font-extrabold text-red-600 text-lg">
+            <td class="px-2 sm:px-4 py-3 sm:py-4 text-right font-extrabold text-red-600 text-sm sm:text-lg">
               {{ formatMonto(cuota.total, cuota.deuda?.moneda || cuota.moneda) }}
             </td>
-            <td class="px-4 py-4 text-center">
+            <td class="px-2 sm:px-4 py-3 sm:py-4 text-center">
               <button @click="togglePagada(cuota)" :disabled="toggling[cuota.id]"
-                class="w-10 h-10 mx-auto rounded-full border-2 border-slate-200 text-slate-400 hover:border-emerald-500 hover:text-emerald-500 flex items-center justify-center transition-all bg-white shadow-sm hover:shadow-emerald-200"
+                class="w-8 h-8 sm:w-10 sm:h-10 mx-auto rounded-full border-2 border-slate-200 text-slate-400 hover:border-emerald-500 hover:text-emerald-500 flex items-center justify-center transition-all bg-white shadow-sm hover:shadow-emerald-200"
                 title="Marcar como pagada">
-                <svg v-if="!toggling[cuota.id]" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg v-if="!toggling[cuota.id]" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
                 </svg>
-                <svg v-else class="animate-spin h-5 w-5 text-emerald-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <svg v-else class="animate-spin h-4 w-4 sm:h-5 sm:w-5 text-emerald-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                 </svg>
