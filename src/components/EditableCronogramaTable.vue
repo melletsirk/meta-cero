@@ -177,100 +177,116 @@ const handlePagoClick = (cuota, idx) => {
     </div>
 
     <!-- Tabla -->
-    <div class="overflow-hidden rounded-2xl border border-slate-200 shadow-sm">
-      <div class="overflow-x-auto">
-        <table class="min-w-full text-sm">
-          <thead class="bg-slate-700 text-white">
-            <tr>
-              <th class="px-2 sm:px-4 py-3 text-left text-[10px] sm:text-xs font-extrabold uppercase tracking-wider rounded-tl-2xl w-10 sm:w-14">N°</th>
-              <th class="px-2 sm:px-4 py-3 text-left text-[10px] sm:text-xs font-extrabold uppercase tracking-wider">Vencimiento</th>
-              <th class="px-2 sm:px-4 py-3 text-right text-[10px] sm:text-xs font-extrabold uppercase tracking-wider">Cuota</th>
-              <th class="hidden sm:table-cell px-4 py-3 text-right text-xs font-extrabold uppercase tracking-wider">Saldo c/ int.</th>
-              <th class="px-2 sm:px-4 py-3 text-center text-[10px] sm:text-xs font-extrabold uppercase tracking-wider rounded-tr-2xl w-12 sm:w-20">Pago</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100 bg-white">
-            <tr v-for="(cuota, idx) in cuotas" :key="cuota.id || cuota.numero || idx"
-              class="border-t border-slate-100 transition-colors group"
-              :class="cuota.pagada ? 'bg-emerald-50/40' : 'hover:bg-slate-50/70'">
-              <!-- N° -->
-              <td class="px-2 sm:px-4 py-3 font-bold text-slate-600 text-[10px] sm:text-xs text-center">
+    <div class="bg-white sm:rounded-2xl sm:shadow-sm sm:border sm:border-slate-200">
+      <table class="w-full text-sm block sm:table">
+        <thead class="hidden sm:table-header-group bg-slate-700 text-white">
+          <tr>
+            <th class="px-4 py-3 text-left text-xs font-extrabold uppercase tracking-wider rounded-tl-2xl w-14">N°</th>
+            <th class="px-4 py-3 text-left text-xs font-extrabold uppercase tracking-wider">Vencimiento</th>
+            <th class="px-4 py-3 text-right text-xs font-extrabold uppercase tracking-wider">Cuota</th>
+            <th class="px-4 py-3 text-right text-xs font-extrabold uppercase tracking-wider">Saldo c/ int.</th>
+            <th class="px-4 py-3 text-center text-xs font-extrabold uppercase tracking-wider rounded-tr-2xl w-20">Pago</th>
+          </tr>
+        </thead>
+        <tbody class="block sm:table-row-group divide-y-0 sm:divide-y sm:divide-slate-100 bg-transparent space-y-4 sm:space-y-0 p-2 sm:p-0">
+          <tr v-for="(cuota, idx) in cuotas" :key="cuota.id || cuota.numero || idx"
+            class="block sm:table-row bg-white sm:bg-transparent rounded-2xl border sm:border-0 border-slate-200 shadow-sm sm:shadow-none p-4 sm:p-0 transition-colors group relative"
+            :class="cuota.pagada ? 'bg-emerald-50/40' : 'sm:hover:bg-slate-50/70'">
+            
+            <!-- N° -->
+            <td class="flex sm:table-cell justify-between items-center sm:px-4 sm:py-3 mb-3 sm:mb-0">
+              <span class="sm:hidden text-xs font-bold text-slate-400 uppercase">N° Cuota</span>
+              <span class="font-bold text-slate-600 text-base sm:text-center block sm:w-full">
                 {{ String(cuota.numero).padStart(2, '0') }}
-              </td>
-              <!-- Fecha -->
-              <td class="px-2 sm:px-3 py-2">
+              </span>
+            </td>
+
+            <!-- Fecha -->
+            <td class="flex sm:table-cell justify-between items-center sm:px-3 sm:py-2 mb-3 sm:mb-0 border-t border-slate-100 sm:border-0 pt-3 sm:pt-0">
+              <span class="sm:hidden text-xs font-bold text-slate-400 uppercase">Fecha</span>
+              <div class="text-right sm:text-left w-1/2 sm:w-auto">
                 <template v-if="readonly">
-                  <span class="text-sm sm:text-lg font-bold block"
+                  <span class="text-base sm:text-lg font-bold block"
                     :class="cuota.pagada ? 'text-slate-500 line-through' : 'text-slate-700'">
                     {{ fmtFecha(cuota.fecha) }}
                   </span>
                 </template>
                 <template v-else>
                   <input type="date" :value="cuota.fecha" @input="e => updateCuota(idx, 'fecha', e.target.value)"
-                    class="w-full border-0 bg-transparent text-sm sm:text-lg text-slate-700 p-1 focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded" />
+                    class="w-full text-right sm:text-left border-0 bg-transparent text-base sm:text-lg text-slate-700 p-1 focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded" />
                 </template>
-              </td>
-              <!-- Monto de cuota -->
-              <td class="px-2 sm:px-3 py-2 text-right">
+              </div>
+            </td>
+
+            <!-- Monto de cuota -->
+            <td class="flex sm:table-cell justify-between items-center sm:px-3 sm:py-2 mb-3 sm:mb-0 border-t border-slate-100 sm:border-0 pt-3 sm:pt-0 text-right">
+              <span class="sm:hidden text-xs font-bold text-slate-400 uppercase">Monto</span>
+              <div>
                 <template v-if="readonly">
-                  <span class="text-sm sm:text-lg font-bold"
+                  <span class="text-xl sm:text-lg font-extrabold sm:font-bold"
                     :class="cuota.pagada ? 'text-slate-400 line-through' : 'text-slate-900'">
                     {{ fmt(cuota.total) }}
                   </span>
                 </template>
                 <template v-else>
                   <div class="relative flex items-center justify-end">
-                    <span class="text-slate-400 text-sm sm:text-lg font-bold mr-1 hidden sm:inline">{{ prefijo }}</span>
+                    <span class="text-slate-400 text-base sm:text-lg font-bold mr-1">{{ prefijo }}</span>
                     <input type="number" step="0.01" :value="cuota.total"
                       @input="e => updateCuota(idx, 'total', Number(e.target.value))"
-                      class="w-20 sm:w-24 text-right border-0 bg-transparent text-sm sm:text-lg font-bold text-slate-900 p-1 focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded" />
+                      class="w-24 sm:w-24 text-right border-0 bg-transparent text-xl sm:text-lg font-extrabold sm:font-bold text-slate-900 p-1 focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded" />
                   </div>
                 </template>
-              </td>
-              <!-- Saldo pendiente con intereses (calculado) - OCULTO EN MOBILE -->
-              <td class="hidden sm:table-cell px-3 py-2 text-right">
-                <span class="text-lg font-bold"
-                  :class="cuota.pagada ? 'text-slate-400 line-through' : (saldosConIntereses[idx] === 0 ? 'text-emerald-600' : 'text-slate-600')">
-                  {{ fmt(saldosConIntereses[idx]) }}
-                </span>
-              </td>
-              <!-- Pago -->
-              <td class="px-2 sm:px-3 py-2 text-center relative">
-                <div v-if="togglingId === cuota.id"
-                  class="absolute inset-0 flex items-center justify-center bg-white/50 backdrop-blur-sm rounded">
-                  <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600"></div>
-                </div>
-                <button type="button" @click="handlePagoClick(cuota, idx)"
-                  class="inline-flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full transition-all" :class="cuota.pagada
-                    ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-300/50'
-                    : 'bg-slate-100 text-slate-300 hover:bg-slate-200'" :disabled="togglingId === cuota.id"
-                  :aria-label="cuota.pagada ? 'Desmarcar cuota' : 'Marcar como pagada'">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 sm:h-3.5 sm:w-3.5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd"
-                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                      clip-rule="evenodd" />
-                  </svg>
-                </button>
-              </td>
-            </tr>
-          </tbody>
+              </div>
+            </td>
 
-          <!-- Totales -->
-          <tfoot>
-            <tr class="border-t-2 border-slate-200 bg-slate-50">
-              <td colspan="2"
-                class="px-2 sm:px-4 py-3 text-[10px] sm:text-xs font-extrabold uppercase tracking-wider text-slate-700 rounded-bl-2xl">
-                Totales <span class="font-normal text-slate-400 hidden sm:inline">{{ prefijo }}</span>
-              </td>
-              <td class="px-2 sm:px-4 py-3 text-right font-extrabold text-xs sm:text-sm tabular-nums text-slate-900">
-                {{ fmt(totales.total) }}
-              </td>
-              <td class="hidden sm:table-cell px-4 py-3 text-right text-xs tabular-nums font-semibold text-slate-400">—</td>
-              <td class="rounded-br-2xl"></td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
+            <!-- Saldo pendiente con intereses -->
+            <td class="flex sm:table-cell justify-between items-center sm:px-3 sm:py-2 mb-4 sm:mb-0 border-t border-slate-100 sm:border-0 pt-3 sm:pt-0 text-right">
+              <span class="sm:hidden text-xs font-bold text-slate-400 uppercase">Saldo Restante</span>
+              <span class="text-base sm:text-lg font-bold"
+                :class="cuota.pagada ? 'text-slate-400 line-through' : (saldosConIntereses[idx] === 0 ? 'text-emerald-600' : 'text-slate-600')">
+                {{ fmt(saldosConIntereses[idx]) }}
+              </span>
+            </td>
+
+            <!-- Pago -->
+            <td class="flex sm:table-cell justify-center sm:px-3 sm:py-2 border-t border-slate-100 sm:border-0 pt-4 sm:pt-0 text-center relative">
+              <div v-if="togglingId === cuota.id"
+                class="absolute inset-0 flex items-center justify-center bg-white/50 backdrop-blur-sm rounded-xl sm:rounded-none z-10">
+                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
+              </div>
+              <button type="button" @click="handlePagoClick(cuota, idx)"
+                class="w-full sm:w-8 h-12 sm:h-8 mx-auto rounded-xl sm:rounded-full border-2 flex items-center justify-center gap-2 font-bold transition-all relative z-20" 
+                :class="cuota.pagada
+                  ? 'bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-200'
+                  : 'bg-indigo-50 border-indigo-100 text-indigo-600 hover:border-indigo-300'" :disabled="togglingId === cuota.id"
+                :aria-label="cuota.pagada ? 'Desmarcar cuota' : 'Marcar como pagada'">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 sm:h-4 sm:w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clip-rule="evenodd" />
+                </svg>
+                <span class="sm:hidden">{{ cuota.pagada ? 'Pagado' : 'Marcar Pago' }}</span>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+
+        <!-- Totales -->
+        <tfoot class="block sm:table-footer-group p-4 sm:p-0">
+          <tr class="block sm:table-row border-t-2 border-slate-200 bg-slate-50 rounded-xl sm:rounded-none">
+            <td colspan="2"
+              class="hidden sm:table-cell px-4 py-3 text-xs font-extrabold uppercase tracking-wider text-slate-700 rounded-bl-2xl">
+              Totales <span class="font-normal text-slate-400">{{ prefijo }}</span>
+            </td>
+            <td class="flex sm:table-cell justify-between sm:justify-end items-center px-4 py-3 text-right font-extrabold tabular-nums text-slate-900">
+              <span class="sm:hidden text-xs font-extrabold uppercase tracking-wider text-slate-700">Total</span>
+              <span class="text-lg sm:text-xs">{{ fmt(totales.total) }}</span>
+            </td>
+            <td class="hidden sm:table-cell px-4 py-3 text-right text-xs tabular-nums font-semibold text-slate-400">—</td>
+            <td class="hidden sm:table-cell rounded-br-2xl"></td>
+          </tr>
+        </tfoot>
+      </table>
     </div>
   </div>
 </template>
