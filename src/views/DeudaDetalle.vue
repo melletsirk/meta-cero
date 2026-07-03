@@ -101,7 +101,8 @@ const handleEliminar = async () => {
     <!-- Estado no encontrado -->
     <div v-if="!deuda && !loadingDeuda" class="text-center py-20 text-slate-400">
       <p class="text-lg font-bold">Deuda no encontrada</p>
-      <button @click="router.push('/')" class="mt-4 text-indigo-600 font-semibold hover:underline">Volver al inicio</button>
+      <button @click="router.push('/')" class="mt-4 text-indigo-600 font-semibold hover:underline">Volver al
+        inicio</button>
     </div>
 
     <!-- Loading -->
@@ -223,6 +224,19 @@ const handleEliminar = async () => {
             }) : '-' }}
           </p>
         </div>
+      </div>
+      <!-- ── Notas ── -->
+      <div v-if="deuda.notas"
+        class="glass rounded-2xl border border-white/60 shadow-sm p-4 relative overflow-hidden mb-6">
+        <div
+          class="absolute -right-3 -top-3 w-16 h-16 bg-cyan-400 rounded-full mix-blend-multiply filter blur-2xl opacity-10">
+        </div>
+        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+          Notas u Observaciones
+        </p>
+        <p class="text-base text-slate-700 whitespace-pre-wrap leading-relaxed">
+          {{ deuda.notas }}
+        </p>
       </div>
 
       <!-- ── Cronograma ── -->
