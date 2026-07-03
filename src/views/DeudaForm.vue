@@ -156,12 +156,18 @@ watch(
         formData.value.redondear_cuota
       )
 
-      // Preservar el estado 'pagada' que el usuario haya marcado previamente
-      // al recalcular el cronograma por cambios en los inputs.
+      // Preservar íntegramente las cuotas ya pagadas para que no se modifiquen
+      // sus valores históricos (capital, interés, total) si el usuario edita la deuda.
       const viejas = cuotasManuales.value || []
       cuotasManuales.value = nuevasCuotas.map((nc, i) => {
-        if (viejas[i] && viejas[i].pagada) {
-          nc.pagada = true
+        if (viejas[i]) {
+          if (viejas[i].pagada) {
+            return { ...viejas[i] } // Conservar la cuota pagada intacta
+          }
+          // Para las pendientes, preservar sus IDs para no perder tracking en la UI
+          nc.id = viejas[i].id
+          nc.pago_id = viejas[i].pago_id
+          nc.pagada = false
         }
         return nc
       })
