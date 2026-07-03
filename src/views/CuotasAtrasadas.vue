@@ -85,21 +85,6 @@ const totalVencidoUSD = computed(() =>
 const toggling = ref({})
 async function togglePagada(cuota) {
   if (toggling.value[cuota.id]) return
-
-  let cuotasDeuda = deudasStore.cuotasPorDeuda[cuota.deuda_id] || []
-  if (cuotasDeuda.length === 0) {
-    cuotasDeuda = await deudasStore.fetchCuotas(cuota.deuda_id)
-  }
-
-  const ordenadas = [...cuotasDeuda].sort((a, b) => a.numero - b.numero)
-  const proximaIdx = ordenadas.findIndex(c => !c.pagada)
-  const idxActual = ordenadas.findIndex(c => c.id === cuota.id)
-
-  if (idxActual !== proximaIdx) {
-    notificationsStore.error('Debes pagar primero la cuota anterior para continuar.')
-    return
-  }
-
   toggling.value[cuota.id] = true
   try {
     await deudasStore.toggleCuotaPagada(cuota, cuota.deuda)
@@ -107,7 +92,7 @@ async function togglePagada(cuota) {
     await cargarVencidas(true)
   } catch (e) {
     console.error(e)
-    notificationsStore.error('Error al actualizar la cuota')
+    notificationsStore.error(e.message || 'Error al actualizar la cuota')
   } finally {
     toggling.value[cuota.id] = false
   }

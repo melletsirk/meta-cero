@@ -58,31 +58,6 @@ onMounted(async () => {
 const handleToggleCuota = async (cuota) => {
   if (togglingId.value) return
 
-  // ── Regla secuencial ────────────────────────────────────────────────────
-  // Solo se puede accionar la próxima cuota sin pagar (para marcar como pagada)
-  // o la última cuota pagada (para deshacer un error).
-  const ordenadas = [...cuotas.value].sort((a, b) => a.numero - b.numero)
-  const proximaIdx = ordenadas.findIndex(c => !c.pagada)
-  const ultimaPagadaIdx = (() => {
-    for (let i = ordenadas.length - 1; i >= 0; i--) {
-      if (ordenadas[i].pagada) return i
-    }
-    return -1
-  })()
-
-  const idxActual = ordenadas.findIndex(c => c.id === cuota.id)
-
-  if (idxActual !== proximaIdx && idxActual !== ultimaPagadaIdx) {
-    // Mensaje de error descriptivo según el caso
-    if (!cuota.pagada) {
-      notificationsStore.error('Debes pagar primero la cuota anterior para continuar.')
-    } else {
-      notificationsStore.error('Solo puedes desmarcar la última cuota pagada.')
-    }
-    return
-  }
-  // ────────────────────────────────────────────────────────────────────────
-
   togglingId.value = cuota.id
   // Capturar estado previo ANTES del optimistic update del store
   const estabaPageda = cuota.pagada
@@ -92,7 +67,7 @@ const handleToggleCuota = async (cuota) => {
     const msg = estabaPageda ? '↩ Cuota desmarcada' : '✅ Cuota marcada como pagada'
     notificationsStore.success(msg)
   } catch (e) {
-    notificationsStore.error('Error al actualizar la cuota')
+    notificationsStore.error(e.message || 'Error al actualizar la cuota')
   } finally {
     togglingId.value = null
   }

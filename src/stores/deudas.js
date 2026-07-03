@@ -402,9 +402,32 @@ export const useDeudasStore = defineStore('deudas', () => {
   }
 
   async function toggleCuotaPagada(cuota, deuda) {
-    const nuevaPagada = !cuota.pagada
+    // ── Validación de regla secuencial centralizada ──
+    let cuotasAct = cuotasPorDeuda.value[deuda.id]
+    if (!cuotasAct || cuotasAct.length === 0) {
+      cuotasAct = await fetchCuotas(deuda.id)
+    }
+    const ordenadas = [...cuotasAct].sort((a, b) => a.numero - b.numero)
+    const proximaIdx = ordenadas.findIndex(c => !c.pagada)
+    const ultimaPagadaIdx = (() => {
+      for (let i = ordenadas.length - 1; i >= 0; i--) {
+        if (ordenadas[i].pagada) return i
+      }
+      return -1
+    })()
     
-    // Optimistic UI update: actualizar inmediatamente en la UI local para que se sienta instantáneo
+    const idxActual = ordenadas.findIndex(c => c.id === cuota.id)
+
+    const nuevaPagada = !cuota.pagada
+    if (nuevaPagada && idxActual !== proximaIdx) {
+      throw new Error('Debes pagar primero la cuota anterior para continuar.')
+    }
+    if (!nuevaPagada && idxActual !== ultimaPagadaIdx) {
+      throw new Error('Solo puedes desmarcar la última cuota pagada.')
+    }
+    // ───────────────────────────────────────────────
+
+    // Optimistic UI update
     cuota.pagada = nuevaPagada
     if (cuotasPorDeuda.value[deuda.id]) {
       const idx = cuotasPorDeuda.value[deuda.id].findIndex(c => c.id === cuota.id)
@@ -413,20 +436,30 @@ export const useDeudasStore = defineStore('deudas', () => {
 
     try {
       if (nuevaPagada) {
-        const { error: rpcError } = await supabase.rpc('registrar_pago', {
-          p_deuda_id: deuda.id,
-          p_monto: cuota.total,
-          p_fecha_pago: new Date().toISOString().split('T')[0],
-          p_tipo: 'cuota_regular'
-        })
-        if (rpcError) throw rpcError
+        // 1. Insertar el pago físicamente en la BD
+        const { data: pago, error: pagoError } = await supabase.from('pagos').insert({
+          deuda_id: deuda.id,
+          monto: cuota.total || cuota.monto_cuota || 0,
+          fecha_pago: new Date().toISOString().split('T')[0],
+          tipo: 'cuota_regular'
+        }).select().single()
+        
+        if (pagoError) throw pagoError
+        
+        // 2. Asociar explícitamente a esta cuota
+        const { error: cuotaError } = await supabase.from('cuotas')
+          .update({ pago_id: pago.id })
+          .eq('id', cuota.id)
+          
+        if (cuotaError) throw cuotaError
       } else {
-        if (cuota.pago_id) {
-          const { error: deleteError } = await supabase
-            .from('pagos')
-            .delete()
-            .eq('id', cuota.pago_id)
-          if (deleteError) throw deleteError
+        // Desmarcar pago: buscar cuál es su pago_id real y borrarlo
+        const { data: cuotaReal } = await supabase.from('cuotas').select('pago_id').eq('id', cuota.id).single()
+        if (cuotaReal?.pago_id) {
+          // Desvincular primero por constraints de llave foránea
+          await supabase.from('cuotas').update({ pago_id: null }).eq('id', cuota.id)
+          // Borrar el pago
+          await supabase.from('pagos').delete().eq('id', cuotaReal.pago_id)
         }
       }
 

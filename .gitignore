@@ -28,4 +28,6 @@ dist-ssr
 # Supabase temp and env files
 .env
 supabase/.temp/
-.env
+
+# Documentos internos
+META_CERO_FEATURES.md
